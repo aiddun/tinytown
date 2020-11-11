@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Roomr</title>
+    <meta charset="utf-8" />
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/1.7.8/css/bootstrap.css" />
+    <link type="text/css" rel="stylesheet" href="https://source.zoom.us/1.7.8/css/react-select.css" />
+    <meta name="format-detection" content="telephone=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+</head>
+
+<body>
+    <style>
+        .sdk-select {
+            height: 34px;
+            border-radius: 4px;
+        }
+		
+		.websdktest button {
+            float: right;
+            margin-left: 5px;
+        }
+        #nav-tool {
+            margin-bottom: 0px;
+        }
+
+        #show-test-tool {
+            position: absolute;
+            top: 100px;
+            left: 0;
+            display: block;
+            z-index: 99999;        
+        }
+
+        #zmmtg-root {
+            width: 50% !important;
+            position: relative !important;
+        }
+
+        #main-content {
+            height: 100%;
+        }
+
+        #main-content * {
+            max-width: 50vw;
+        }
+
+        #game-area {
+            padding-top: 4em;
+        }
+
+    </style>
+
+    <nav id="nav-tool" class="uk-navbar uk-background-default uk-position-z-index">
+        <div class="uk-navbar-center">
+            <div class="">
+                <a class="uk-navbar-item uk-logo" href="#">Roomr</a>
+            </div>
+            <div id="navbar" class="websdktest">
+                <form class="navbar-form navbar-right" id="meeting_form">
+                    <div class="form-group">
+                        <input type="text" class="uk-input" name="display_name" id="display_name" value="1.7.8#CDN" maxLength="100"
+                            placeholder="Name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="uk-input" name="meeting_number" id="meeting_number" value="" maxLength="11"
+                            style="width:150px" placeholder="Meeting Number" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" class="uk-input" name="meeting_pwd" id="meeting_pwd" value="" style="width:150px"
+                            maxLength="32" placeholder="Meeting Password" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <select id="meeting_role" class="uk-select">
+                            <option value=0>Attendee</option>
+                            <option value=1>Host</option>
+                            <option value=5>Assistant</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <select id="meeting_lang" class="uk-select">
+                            <option value="en-US">English</option>
+                            <option value="de-DE">German Deutsch</option>
+                            <option value="es-ES">Spanish Español</option>
+                            <option value="fr-FR">French Français</option>
+                            <option value="jp-JP">Japanese 日本語</option>
+                            <option value="pt-PT">Portuguese Portuguese</option>
+                            <option value="ru-RU">Russian Русский</option>
+                            <option value="zh-CN">Chinese 简体中文</option>
+                            <option value="zh-TW">Chinese 繁体中文</option>
+                            <option value="ko-KO">Korean 한국어</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="uk-button uk-button-primary" id="join_meeting">Join</button>
+                    <button type="submit" class="uk-button uk-button-primary" id="clear_all">Clear</button>
+
+                </form>
+            </div>
+            <!--/.navbar-collapse -->
+        </div>
+    </nav>
+
+    <!-- Main content -->
+
+    <div id="main-content" class="uk-grid">
+        <div class="uk-width-1-2">
+            <div class="" id="game-area"></div>
+        </div>
+    </div>
+    <!-- UIkit CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.4.6/dist/css/uikit.min.css" />
+
+    <!-- UIkit JS -->
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.4.6/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.4.6/dist/js/uikit-icons.min.js"></script>
+
+    <!-- Game engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.0/socket.io.min.js" integrity="sha512-uhQJ7yRsSv2qpuYz6muYG9h5epmWXLBCg9T5/s3IgveaTlCUlK2HvtoIc4dPO6GTXjA5SrDbh6LKIUM2gxJLvA==" crossorigin="anonymous"></script>    <script src="https://cdn.jsdelivr.net/npm/phaser@3.3.0/dist/phaser.min.js"></script>
+    <script src="js/tool.js"></script>
+    <script src="js/index.js"></script>
+
+
+    <script>
+
+    </script>
+</body>
+
+</html>
