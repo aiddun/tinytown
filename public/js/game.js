@@ -157,7 +157,7 @@ const CSS_COLOR_NAMES = [
 ];
 
 class Player {
-  constructor(x, y, rotation = 0, playerId, canvas) {
+  constructor(x, y, rotation = 0, name = "", playerId, canvas) {
     this.x = x;
     this.y = y;
     this.rotation = rotation;
@@ -165,6 +165,7 @@ class Player {
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
     this.moved = false;
+    this.name = name || "";
   }
 
   setRotation(rotation) {
@@ -202,17 +203,30 @@ class Player {
     ctx.arc(x, y, 10, 0, Math.PI * 2);
     // const hexString = `${stringHash(this.playerId) % 0xffffff}`;
     // ctx.fillStyle = "#" + (6 - hexString.length) * "0" + hexString;
-    ctx.fillStyle =
+    const color =
       CSS_COLOR_NAMES[stringHash(this.playerId) % CSS_COLOR_NAMES.length];
+    ctx.fillStyle = color;
+
     ctx.fill();
     ctx.outline;
     ctx.closePath();
+
+    // text
+    // ctx.font = '15px Sans-serif';
+    // // outline
+    // ctx.strokeStyle = "gray";
+    // ctx.lineWidth = 3;
+    // ctx.strokeText(this.name, x, y - 20);
+    // inside
+    ctx.fillStyle = color;
+    ctx.textAlign = "center";
+    ctx.fillText(this.name, x, y - 15);
   }
 }
 
 class User extends Player {
-  constructor(x, y, rotation = 0, playerId, canvas) {
-    super(x, y, rotation, playerId, canvas);
+  constructor(x, y, rotation = 0, name = "", playerId, canvas) {
+    super(x, y, rotation, name, playerId, canvas);
     this.vx = 0;
     this.vy = 0;
     this.angularvelocity = 0;
@@ -251,7 +265,8 @@ class Game {
     Object.entries(this.sockets).forEach(([name, callback]) => {
       this.socket.on(name, callback);
     });
-    this.setupControls();
+    this.setupControls(this.canvas);
+    this.setupNameInput();
   }
 
   render() {
@@ -280,13 +295,13 @@ class Game {
       };
 
       const keyMappings = {
-        a: actions.left,
+        // a: actions.left,
         ArrowLeft: actions.left,
-        d: actions.right,
+        // d: actions.right,
         ArrowRight: actions.right,
-        w: actions.up,
+        // w: actions.up,
         ArrowUp: actions.up,
-        s: actions.down,
+        // s: actions.down,
         ArrowDown: actions.down,
       };
 
@@ -302,16 +317,16 @@ class Game {
       };
 
       const keyMappings = {
-        a: actions.left,
+        // a: actions.left,
         ArrowLeft: actions.left,
-        d: actions.right,
+        // d: actions.right,
         ArrowRight: actions.right,
-        w: actions.up,
+        // w: actions.up,
         ArrowUp: actions.up,
-        s: actions.down,
+        // s: actions.down,
         ArrowDown: actions.down,
       };
-      
+
       const action = keyMappings[key];
       action && action();
     });
@@ -319,14 +334,27 @@ class Game {
     setInterval(this.render.bind(this), 0.1);
   }
 
+  setupNameInput = () => {
+    const nameInput = document.getElementById("nameInput");
+    nameInput.addEventListener("input", (event) => {
+      const newName = event.target.value;
+      this.player.name = newName;
+
+      // Server handles identity via socketId
+      this.socket.emit("setPlayerName", {
+        name: newName,
+      });
+    });
+  };
+
   // add player, including user
   // returns true if added player is the user
   addPlayer(playerInfo) {
-    const { x, y, playerId } = playerInfo;
+    const { x, y, playerId, name } = playerInfo;
     const isUser = playerId == this.socket.id;
     const player = isUser
-      ? new User(x, y, 0, playerId, this.canvas)
-      : new Player(x, y, 0, playerId, this.canvas);
+      ? new User(x, y, 0, name, playerId, this.canvas)
+      : new Player(x, y, 0, name, playerId, this.canvas);
     this.players[playerId] = player;
     isUser && (this.player = player);
   }
@@ -341,7 +369,6 @@ class Game {
   };
 
   onDisconnect = (playerInfo) => {
-    console.log(playerInfo);
     const { playerId } = playerInfo;
     if (!playerId) return;
     const player = this.players[playerId];
@@ -361,12 +388,22 @@ class Game {
     }
   };
 
+  onPlayerNameChanged = (playerInfo) => {
+    const { name } = playerInfo;
+    const player = this.players[playerInfo.playerId];
+
+    if (player) {
+      player.name = name;
+    }
+  };
+
   sockets = {
     playerUpdate: this.onPlayerJoin,
     playerMoved: this.onPlayerMoved,
     playerDisconnect: this.onDisconnect,
     newPlayer: this.onNewPlayer,
     currentPlayers: this.onPlayerJoin,
+    playerNameChanged: this.onPlayerNameChanged,
   };
 }
 

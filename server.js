@@ -17,6 +17,7 @@ class Player {
     this.y = y;
     this.playerId = playerId;
     this.room = room;
+    this.name = ""
   }
 }
 
@@ -86,6 +87,16 @@ io.on("connection", (socket) => {
     players[socket.id].x = x;
     players[socket.id].y = y;
     socket.to(room_id.toString()).emit("playerMoved", players[socket.id]);
+  });
+
+  socket.on("setPlayerName", (req) => {
+    if (!req) return;
+    const { name } = req;
+    const player = players[socket.id];
+    if (!player || !name) return;
+    player.name = name;
+
+    socket.to(room_id.toString()).emit("playerNameChanged", players[socket.id]);
   });
 });
 
