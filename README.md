@@ -6,4 +6,8 @@ requires: node, socket.io and express
 
 to run: `node server.js` and navigate to 0.0.0.0:8081
 
+<br/>
+
+screenshot:
+
 <img width="500" alt="11/15/20 screenshot" src="https://github.com/aiddun/tinytown/blob/main/screenshots/sc.png">
