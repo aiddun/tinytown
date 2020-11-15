@@ -1,0 +1,20 @@
+body {
+    text-align: center;
+    font-family: Helvetica, Arial, sans-serif;
+}
+
+#game {
+    border-style: solid;
+    border-radius: 20px;
+    
+    /* center horizontally */
+    padding-left: 0;
+    padding-right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    display: block;
+
+    background-image: url("../assets/city.jpg");
+    background-size: contain;
+
+}

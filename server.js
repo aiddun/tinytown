@@ -75,6 +75,7 @@ io.on("connection", (socket) => {
   // disconnect
   socket.on("disconnect", function () {
     console.log("user disconnected");
+    socket.to(room_id.toString()).emit("playerDisconnect", players[socket.id]);
     delete players[socket.id];
   });
 
