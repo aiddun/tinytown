@@ -1,7 +1,16 @@
+// Can be public
+
+// We generate token serverside
+var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
+
+// TODO: Replace with something better
 const stringHash = (s) => {
-  return s
-    .split("")
-    .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * index, 0);
+  return (
+    s
+      .split("")
+      .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * 31 ** index, 0) %
+    2 ** 64
+  );
 };
 
 //todo: move
@@ -162,10 +171,13 @@ class Player {
     this.y = y;
     this.rotation = rotation;
     this.playerId = playerId;
+    // We need this because agora user ids can only be ints
+    this.idHash = stringHash(playerId);
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
     this.moved = false;
     this.name = name || "";
+    this.audioTrack = null;
   }
 
   setRotation(rotation) {
@@ -177,13 +189,22 @@ class Player {
     this.y = y % this.canvas.height;
   }
 
-  getDistance() {
-    return Math.sqrt(this.x ** 2 + this.y ** 2);
+  getDistance(user) {
+    return Math.sqrt((user.x - this.x) ** 2 + (user.y - this.y) ** 2);
   }
 
   destroy() {}
 
   refresh() {}
+
+  updateAudio(user) {
+    if (this.audioTrack) {
+      let dist = this.getDistance(user);
+      dist = dist > 100 ? 100 : dist;
+      const vol = 100 - dist;
+      this.audioTrack.setVolume(vol);
+    }
+  }
 
   render() {
     this.refresh();
@@ -245,6 +266,8 @@ class User extends Player {
     this.angularvelocity = omega;
   }
 
+  updateAudio() {}
+
   refresh() {
     this.x = (this.x + this.vx + this.canvas.width) % this.canvas.width;
     this.y = (this.y + this.vy + this.canvas.height) % this.canvas.height;
@@ -265,13 +288,17 @@ class Game {
     Object.entries(this.sockets).forEach(([name, callback]) => {
       this.socket.on(name, callback);
     });
+
     this.setupControls(this.canvas);
     this.setupNameInput();
   }
 
   render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    Object.values(this.players).forEach((p) => p.render());
+    Object.values(this.players).forEach((p) => {
+      p.render();
+      p.updateAudio(this.player);
+    });
 
     if (this.player && this.player.moved) {
       this.player.moved = false;
@@ -286,7 +313,7 @@ class Game {
 
   setupControls() {
     document.addEventListener("keydown", ({ key }) => {
-      const v = 2;
+      const v = 1;
       const actions = {
         left: () => this.player.setVX(-v),
         up: () => this.player.setVY(-v),
@@ -347,6 +374,47 @@ class Game {
     });
   };
 
+  async setupAudio(channel, token) {
+    this.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+    const appid = AGORA_APPID;
+    const uid = await this.client.join(
+      appid,
+      channel,
+      token,
+      this.player.playerId
+    );
+
+    this.client.on("user-published", async (user, mediaType) => {
+      // Subscribe to a remote user.
+      await this.client.subscribe(user, mediaType);
+      console.log("subscribe success");
+
+      // If the subscribed track is audio.
+      if (mediaType === "audio") {
+        // Get `RemoteAudioTrack` in the `user` object.
+        const remoteAudioTrack = user.audioTrack;
+        // Play the audio track. No need to pass any DOM element.
+        remoteAudioTrack.play();
+
+        const { uid } = user;
+        this.players[uid].audioTrack = remoteAudioTrack;
+      } else {
+        console.error("error: unsupported media track");
+      }
+    });
+
+    // Create an audio track from the audio sampled by a microphone
+    this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    // Publish the local audio to the channel.
+    await this.client.publish([this.localAudioTrack]);
+
+    console.log("audio publish success!");
+    const audioStatus = document.getElementById("audiostatus")
+    audioStatus.innerHTML = "audio connected"
+
+    this.client.on("user-unpublished", (user) => {});
+  }
+
   // add player, including user
   // returns true if added player is the user
   addPlayer(playerInfo) {
@@ -360,8 +428,10 @@ class Game {
   }
 
   // user initial join
-  onPlayerJoin = (players) => {
+  onPlayerJoin = ({ players, token, channel }) => {
     Object.values(players).forEach((player) => this.addPlayer(player));
+
+    this.setupAudio(channel, token);
   };
 
   onNewPlayer = (playerInfo) => {
@@ -397,13 +467,20 @@ class Game {
     }
   };
 
+  // messageSaid = ({ msg }) => {
+  //   if (msg) {
+  //     const utterance = new SpeechSynthesisUtterance(msg);
+  //     if (utterance) synthesis.speak(utterance);
+  //   }
+  // };
+
   sockets = {
-    playerUpdate: this.onPlayerJoin,
     playerMoved: this.onPlayerMoved,
     playerDisconnect: this.onDisconnect,
     newPlayer: this.onNewPlayer,
-    currentPlayers: this.onPlayerJoin,
+    onJoin: this.onPlayerJoin,
     playerNameChanged: this.onPlayerNameChanged,
+    messageSaid: this.onMessageSaid,
   };
 }
 
