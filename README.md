@@ -1,6 +1,6 @@
 websocket-based online town w/ socket.io and 100% native js web canvas site
 
-positional audio coming soon
+positional audio requires agora keys in game.js and a .env file
 
 requires: node, socket.io and express
 
