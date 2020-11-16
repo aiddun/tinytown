@@ -73,7 +73,7 @@ io.on("connection", (socket) => {
 
   socket.join(room_id.toString());
 
-  console.log("a user connected: ", socket.id);
+  console.log(`a user connected: (${users}) ${socket.id}`);
   const { players } = board;
 
   // create a new player
@@ -96,10 +96,9 @@ io.on("connection", (socket) => {
 
   // disconnect
   socket.on("disconnect", function () {
-    console.log("user disconnected");
+    console.log(`user disconnected (${--users})`);
     socket.to(room_id.toString()).emit("playerDisconnect", players[socket.id]);
     delete players[socket.id];
-    --users;
   });
 
   // on player movement

@@ -1,5 +1,4 @@
 // Can be public
-
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
 
@@ -200,8 +199,8 @@ class Player {
   updateAudio(user) {
     if (this.audioTrack) {
       let dist = this.getDistance(user);
-      dist = dist > 100 ? 100 : dist;
-      const vol = 100 - dist;
+      dist = dist > 200 ? 200 : dist;
+      const vol = 200 - dist;
       this.audioTrack.setVolume(vol);
     }
   }
