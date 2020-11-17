@@ -408,8 +408,8 @@ class Game {
     await this.client.publish([this.localAudioTrack]);
 
     console.log("audio publish success!");
-    const audioStatus = document.getElementById("audiostatus")
-    audioStatus.innerHTML = "audio connected"
+    const audioStatus = document.getElementById("audiostatus");
+    audioStatus.innerHTML = "audio connected";
 
     this.client.on("user-unpublished", (user) => {});
   }
@@ -431,6 +431,9 @@ class Game {
     Object.values(players).forEach((player) => this.addPlayer(player));
 
     this.setupAudio(channel, token);
+    // Auto timeout after half an hour
+    // TODO: Replace with system by activity/client focus/movement
+    setTimeout(this.client.leave, 1800000);
   };
 
   onNewPlayer = (playerInfo) => {
