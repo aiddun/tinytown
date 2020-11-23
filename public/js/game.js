@@ -2,7 +2,7 @@
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
 var TICK_HZ = 10;
-var IDLE_MINUTES = .04;
+var IDLE_MINUTES = 10;
 
 // TODO: Replace with something better
 const stringHash = (s) => {
