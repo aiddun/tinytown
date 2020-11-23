@@ -1,8 +1,13 @@
 // Can be public
+
+const { config } = require("dotenv/types");
+
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
 var TICK_HZ = 10;
 var IDLE_MINUTES = 10;
+var SAMPLE_RATE = 48e3;
+var NUM_CHANNELS = 2;
 
 // TODO: Replace with something better
 const stringHash = (s) => {
@@ -178,8 +183,63 @@ class Player {
     this.ctx = this.canvas.getContext("2d");
     this.moved = false;
     this.name = name || "";
-    this.audioTrack = null;
+
+    // todo: base case (first buffer)
+    // todo: register event listener
+    // todo: make sure frame callback fires
+
+    // We don't need to store the incoming channel as we recieve it's frames upon every callback
+    // Which is all that we need
+    // 2 'buffers' w/ 2 channels
+    this.currentbuffer = -1;
+    this.buffers = [
+      new AudioBuffer(4096, 2, SAMPLE_RATE),
+      new AudioBuffer(4096, 2, SAMPLE_RATE),
+    ];
+    this.bufferTrack = createBufferSourceAudioTrack({
+      source: this.buffers[this.currentbuffer],
+    });
+
+    this.bufferTrack.onEnded = this.onBufferEnded.bind(this);
   }
+
+  // Copy to unused buffer
+  // Todo: add some sort of lock
+  audioFrameCallback = (buffer) => {
+    let unusedBufferIndex;
+    // Check for ase case
+    if (this.currentbuffer < 0) {
+      unusedBufferIndex = 0;
+    } else {
+      unusedBufferIndex ^= 1;
+    }
+
+    // TODO: Remove for loop
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+      // Float32Array with PCM data
+      const newChannelData = buffer.getChannelData(channel);
+
+      // todo: add DSP
+
+      const unusedBuffer = this.buffers[unusedBufferIndex];
+      unusedBuffer.copyToChannel(newChannelData, channel);
+    }
+
+    // base case
+    if (this.currentbuffer < 0){
+      this.currentbuffer = 0;
+      this.onBufferEnded();
+    }
+  };
+
+  onBufferEnded = () => {
+    // this.bufferOutput.buffer = ...
+    // todo: is this a race condition? should this be after source assignment?
+    this.currentbuffer ^= 1;
+    this.bufferTrack.source = this.buffers[this.currentbuffer];
+    this.bufferTrack.seek(0);
+    this.bufferTrack.play();
+  };
 
   setRotation(rotation) {
     this.rotation = rotation;
@@ -299,12 +359,15 @@ class Game {
     this.setupTimeoutTimer();
   }
 
-  async render() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    Object.values(this.players).forEach((p) => {
-      p.render();
-      p.updateAudio(this.player);
-    });
+  render() {
+    // Render asyncronously
+    (async () => {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      Object.values(this.players).forEach((p) => {
+        p.render();
+        p.updateAudio(this.player);
+      });
+    })();
 
     if (this.player && this.player.moved) {
       this.player.moved = false;
@@ -396,6 +459,7 @@ class Game {
 
   async setupAudio(channel, token) {
     this.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+    debugger;
     const appid = AGORA_APPID;
     const uid = await this.client.join(
       appid,
@@ -413,11 +477,17 @@ class Game {
       if (mediaType === "audio") {
         // Get `RemoteAudioTrack` in the `user` object.
         const remoteAudioTrack = user.audioTrack;
+
         // Play the audio track. No need to pass any DOM element.
         remoteAudioTrack.play();
 
         const { uid } = user;
-        this.players[uid].audioTrack = remoteAudioTrack;
+        const trackowner = this.players[uid];
+        trackowner.audioTrack = remoteAudioTrack;
+
+        remoteAudioTrack.setAudioFrameCallback(
+          trackowner.audioFrameCallback.bind(trackowner)
+        );
       } else {
         console.error("error: unsupported media track");
       }
@@ -435,7 +505,7 @@ class Game {
     this.client.on("user-unpublished", (user) => {});
   }
 
-  async stopAudio(){
+  async stopAudio() {
     // Stop mic
     this.localAudioTrack.close();
     // Leave the channel.
