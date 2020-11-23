@@ -1,6 +1,8 @@
 // Can be public
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
+var TICK_HZ = 10;
+var IDLE_MINUTES = .04;
 
 // TODO: Replace with something better
 const stringHash = (s) => {
@@ -278,21 +280,26 @@ class User extends Player {
 
 class Game {
   constructor(canvasId) {
-    this.socket = io();
     this.player = null;
     this.players = {};
     this.canvas = document.getElementById(canvasId);
     this.ctx = this.canvas.getContext("2d");
 
+    this.socket = io();
     Object.entries(this.sockets).forEach(([name, callback]) => {
       this.socket.on(name, callback);
     });
 
     this.setupControls(this.canvas);
     this.setupNameInput();
+
+    // Every 15 minutes check to see if this has been set. If not, disconnect.
+    this.timeoutTimer = null;
+    this.movedInInterval = false;
+    this.setupTimeoutTimer();
   }
 
-  render() {
+  async render() {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     Object.values(this.players).forEach((p) => {
       p.render();
@@ -302,6 +309,9 @@ class Game {
     if (this.player && this.player.moved) {
       this.player.moved = false;
 
+      // For some reason this is the fastest way to assign binary values in JS (at least v8). Microbenchmarked it.
+      this.movedInInterval = !0;
+
       this.socket.emit("playerMovement", {
         x: this.player.x,
         y: this.player.y,
@@ -310,8 +320,10 @@ class Game {
     }
   }
 
-  setupControls() {
-    document.addEventListener("keydown", ({ key }) => {
+  setupControls(canvas) {
+    canvas.addEventListener("keydown", (event) => {
+      const { key } = event;
+
       const v = 1;
       const actions = {
         left: () => this.player.setVX(-v),
@@ -321,20 +333,26 @@ class Game {
       };
 
       const keyMappings = {
-        // a: actions.left,
+        a: actions.left,
         ArrowLeft: actions.left,
-        // d: actions.right,
+        d: actions.right,
         ArrowRight: actions.right,
-        // w: actions.up,
+        w: actions.up,
         ArrowUp: actions.up,
-        // s: actions.down,
+        s: actions.down,
         ArrowDown: actions.down,
       };
 
-      keyMappings[key] && keyMappings[key]();
+      const action = keyMappings[key];
+      if (action) {
+        action();
+        event.preventDefault();
+      }
     });
 
-    document.addEventListener("keyup", ({ key }) => {
+    canvas.addEventListener("keyup", (event) => {
+      const { key } = event;
+
       const actions = {
         left: () => this.player.setVX(0),
         up: () => this.player.setVY(0),
@@ -343,21 +361,24 @@ class Game {
       };
 
       const keyMappings = {
-        // a: actions.left,
+        a: actions.left,
         ArrowLeft: actions.left,
-        // d: actions.right,
+        d: actions.right,
         ArrowRight: actions.right,
-        // w: actions.up,
+        w: actions.up,
         ArrowUp: actions.up,
-        // s: actions.down,
+        s: actions.down,
         ArrowDown: actions.down,
       };
 
       const action = keyMappings[key];
-      action && action();
+      if (action) {
+        action();
+        event.preventDefault();
+      }
     });
 
-    setInterval(this.render.bind(this), 0.1);
+    setInterval(this.render.bind(this), 1 / TICK_HZ);
   }
 
   setupNameInput = () => {
@@ -414,6 +435,16 @@ class Game {
     this.client.on("user-unpublished", (user) => {});
   }
 
+  async stopAudio(){
+    // Stop mic
+    this.localAudioTrack.close();
+    // Leave the channel.
+    await this.client.leave();
+
+    const audioStatus = document.getElementById("audiostatus");
+    audioStatus.innerHTML = "audio disconnected";
+  }
+
   // add player, including user
   // returns true if added player is the user
   addPlayer(playerInfo) {
@@ -431,16 +462,15 @@ class Game {
     Object.values(players).forEach((player) => this.addPlayer(player));
 
     this.setupAudio(channel, token);
-    // Auto timeout after half an hour
+    // Auto timeout after 15 mins
     // TODO: Replace with system by activity/client focus/movement
-    setTimeout(this.client.leave, 1800000);
   };
 
   onNewPlayer = (playerInfo) => {
     this.addPlayer(playerInfo);
   };
 
-  onDisconnect = (playerInfo) => {
+  onOtherPlayerDisconnect = (playerInfo) => {
     const { playerId } = playerInfo;
     if (!playerId) return;
     const player = this.players[playerId];
@@ -469,16 +499,39 @@ class Game {
     }
   };
 
-  // messageSaid = ({ msg }) => {
-  //   if (msg) {
-  //     const utterance = new SpeechSynthesisUtterance(msg);
-  //     if (utterance) synthesis.speak(utterance);
-  //   }
-  // };
+  disconnect = () => {
+    this.stopTimeoutTimer();
+    this.stopAudio();
+    this.socket.disconnect();
+
+    // Hide canvas and show disconnected text
+    document.getElementById("game").style.display = "none";
+    document.getElementById("disconnected-text").innerHTML =
+      "Disconnected due to inactivity. Please refresh the page to continue.";
+
+    // // Allow for dom to update
+    // setTimeout(() => {
+    //   alert("Disconnected due to inactivity. Please refresh to continue.");
+    // }, 200);
+  };
+
+  setupTimeoutTimer = () => {
+    this.timeoutTimer = setInterval(() => {
+      if (this.movedInInterval == false) {
+        this.disconnect();
+      } else {
+        this.movedInInterval = false;
+      }
+    }, IDLE_MINUTES * 60 * 1000);
+  };
+
+  stopTimeoutTimer = () => {
+    if (this.timeoutTimer) clearInterval(this.timeoutTimer);
+  };
 
   sockets = {
     playerMoved: this.onPlayerMoved,
-    playerDisconnect: this.onDisconnect,
+    playerDisconnect: this.onOtherPlayerDisconnect,
     newPlayer: this.onNewPlayer,
     onJoin: this.onPlayerJoin,
     playerNameChanged: this.onPlayerNameChanged,

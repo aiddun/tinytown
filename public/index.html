@@ -1,25 +1,29 @@
 <!DOCTYPE html>
 <html>
+  <!-- hello people looking at the source -->
+  <!-- pls lmk how bad my code quality is -->
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
 
-    <!-- hello people looking at the source -->
-    <!-- pls lmk how bad my code quality is -->
-    <head>
-        <meta charset="utf-8">
-        <link rel="stylesheet" href="css/style.css">
-
-    </head>
-
-    <body>
-        <h2>house club</h2>
-        <h3>move around town with <strong>positional audio</strong></h3>
-        <canvas id="game" width="700px" height="500px"></canvas>
-        <br/>
-        <input id="nameInput" type="text" placeholder="Your name"/>
-        <p>use arrow keys to move</p>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.0/socket.io.min.js" integrity="sha512-uhQJ7yRsSv2qpuYz6muYG9h5epmWXLBCg9T5/s3IgveaTlCUlK2HvtoIc4dPO6GTXjA5SrDbh6LKIUM2gxJLvA==" crossorigin="anonymous"></script>
-        <script src="js/game.js"></script>
-        <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.1.0.js"></script>
-        <strong id="audiostatus">audio connecting...</strong>
-    </body>
-
+  <body>
+    <h2>house club</h2>
+    <h3>move around town with <strong>positional audio</strong></h3>
+    <div id="gamearea">
+      <canvas id="game" width="700px" height="500px" tabindex="-1"></canvas>
+      <p id="disconnected-text"></p>
+    </div>
+    <br />
+    <input id="nameInput" type="text" placeholder="Your name" />
+    <p>use arrow keys to move</p>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.0/socket.io.min.js"
+      integrity="sha512-uhQJ7yRsSv2qpuYz6muYG9h5epmWXLBCg9T5/s3IgveaTlCUlK2HvtoIc4dPO6GTXjA5SrDbh6LKIUM2gxJLvA=="
+      crossorigin="anonymous"
+    ></script>
+    <script src="js/game.js"></script>
+    <script src="https://download.agora.io/sdk/web/AgoraRTC_N-4.1.0.js"></script>
+    <strong id="audiostatus">audio connecting...</strong>
+  </body>
 </html>
