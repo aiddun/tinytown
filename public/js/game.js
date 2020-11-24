@@ -1,13 +1,13 @@
 // Can be public
-
-const { config } = require("dotenv/types");
-
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
 var TICK_HZ = 10;
 var IDLE_MINUTES = 10;
 var SAMPLE_RATE = 48e3;
 var NUM_CHANNELS = 2;
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audioCtx = new AudioContext();
+var AUDIO_BUF_SIZE = 4096;
 
 // TODO: Replace with something better
 const stringHash = (s) => {
@@ -190,55 +190,58 @@ class Player {
 
     // We don't need to store the incoming channel as we recieve it's frames upon every callback
     // Which is all that we need
-    // 2 'buffers' w/ 2 channels
-    this.currentbuffer = -1;
-    this.buffers = [
-      new AudioBuffer(4096, 2, SAMPLE_RATE),
-      new AudioBuffer(4096, 2, SAMPLE_RATE),
-    ];
-    this.bufferTrack = createBufferSourceAudioTrack({
-      source: this.buffers[this.currentbuffer],
-    });
+    // Producer consumer Queue
+    this.bufferQ = [];
+    this.currentTrack = null;
 
-    this.bufferTrack.onEnded = this.onBufferEnded.bind(this);
+    this.onBufferEnded();
   }
 
   // Copy to unused buffer
-  // Todo: add some sort of lock
-  audioFrameCallback = (buffer) => {
-    let unusedBufferIndex;
-    // Check for ase case
-    if (this.currentbuffer < 0) {
-      unusedBufferIndex = 0;
-    } else {
-      unusedBufferIndex ^= 1;
-    }
+  // Todo: add some sort of lock?
+  audioFrameCallback = async (buffer) => {
+    const newBuffer = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
 
-    // TODO: Remove for loop
-    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
+    // Unremovable for loop as AudioBuffers only expose data through getter method :(
+    for (let channel = 0; channel < AUDIO_BUF_SIZEbuffer.numberOfChannels; channel += 1) {
       // Float32Array with PCM data
       const newChannelData = buffer.getChannelData(channel);
 
       // todo: add DSP
+      // for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
+      //   // Math.random() is in [0; 1.0]
+      //   // audio needs to be in [-1.0; 1.0]
+      //   newChannelData[i] = Math.random() * 2 - 1;
+      // }
 
-      const unusedBuffer = this.buffers[unusedBufferIndex];
-      unusedBuffer.copyToChannel(newChannelData, channel);
+      newBuffer.copyToChannel(newChannelData, channel);
     }
 
-    // base case
-    if (this.currentbuffer < 0){
-      this.currentbuffer = 0;
-      this.onBufferEnded();
-    }
+    this.nextBuf = newBuffer;
+    this.bufferQ.push(newBuffer);
+    // console.log("enqueue");
   };
 
-  onBufferEnded = () => {
+  onBufferEnded = async () => {
     // this.bufferOutput.buffer = ...
     // todo: is this a race condition? should this be after source assignment?
-    this.currentbuffer ^= 1;
-    this.bufferTrack.source = this.buffers[this.currentbuffer];
-    this.bufferTrack.seek(0);
-    this.bufferTrack.play();
+    const currentTrack = audioCtx.createBufferSource();
+    let buffer;
+    // while (buffer = );
+    let newBuf = this.nextBuf;
+    if (!newBuf) {
+      // console.log("missing buffer");
+      newBuf = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
+    } else {
+      // console.log("not missing buffer")
+    }
+    currentTrack.buffer = newBuf;
+    currentTrack.onended = this.onBufferEnded.bind(this);
+
+    this.currentTrack = currentTrack;
+
+    this.currentTrack.connect(audioCtx.destination);
+    this.currentTrack.start(0, 0);
   };
 
   setRotation(rotation) {
@@ -259,6 +262,10 @@ class Player {
   refresh() {}
 
   updateAudio(user) {
+    // TODO: Change to x^-sqrt(2)
+    // if (this.bufferTrack) {
+    //   this.bufferTrack.stop();
+    // }
     if (this.audioTrack) {
       let dist = this.getDistance(user);
       dist = dist > 200 ? 200 : dist;
@@ -459,7 +466,6 @@ class Game {
 
   async setupAudio(channel, token) {
     this.client = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
-    debugger;
     const appid = AGORA_APPID;
     const uid = await this.client.join(
       appid,
@@ -479,14 +485,15 @@ class Game {
         const remoteAudioTrack = user.audioTrack;
 
         // Play the audio track. No need to pass any DOM element.
-        remoteAudioTrack.play();
+        // remoteAudioTrack.play();
 
         const { uid } = user;
         const trackowner = this.players[uid];
         trackowner.audioTrack = remoteAudioTrack;
 
         remoteAudioTrack.setAudioFrameCallback(
-          trackowner.audioFrameCallback.bind(trackowner)
+          trackowner.audioFrameCallback.bind(trackowner),
+          AUDIO_BUF_SIZE
         );
       } else {
         console.error("error: unsupported media track");
