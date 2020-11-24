@@ -171,6 +171,68 @@ const CSS_COLOR_NAMES = [
   "YellowGreen",
 ];
 
+class PositionalAudioWorker {
+  // Process audio in real time using a double buffered approach
+  // (process buffer_{n} of PCM data while simultaniusly playing buffer_{n-1}, then repeat for buffer_{n+1})
+
+  // Parent must implement getVols() -> [number] | number[]
+  constructor(parent) {
+    this.parent = parent;
+    // We don't need to store the incoming channel as we recieve it's frames upon every call of onNewFrames
+    this.currentTrack = null;
+    // Only keep most recent so we don't lag behind if audio frame processing  time gets slower (which it shouldn't)
+    // in comparison to using something like a bounded buffer
+    this.nextBuf = null;
+
+    // Start playing 0'd out sound until we start to recieve audio
+    this.nextBuffer();
+  }
+
+  onNewFrames = async (buffer) => {
+    const newBuffer = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
+
+    let vols = this.parent.getVols();
+    // If only one volume passed, apply to all channels
+    vols = vols.length === 1 ? new Array(NUM_CHANNELS).fill(vols[0]) : vols;
+
+    for (let channel = 0; channel < NUM_CHANNELS; ++channel) {
+      // Float32Array with PCM data
+      const newChannelData = buffer.getChannelData(channel);
+      const vol = vols[channel];
+
+      // Perform DSP here on PCM array
+      for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
+        newChannelData[i] *= vol;
+      }
+
+      // Copy to new buffer
+      newBuffer.copyToChannel(newChannelData, channel);
+    }
+
+    this.nextBuf = newBuffer;
+  };
+
+  nextBuffer = async () => {
+    // WebAudio doesn't allow us to reassign buffers to nodes (even if it's not currently playing)
+    // so we need to allocate a new node every time (very fast, intended way to do this?)
+    const currentTrack = audioCtx.createBufferSource();
+    // Reassign callback
+    currentTrack.onended = this.nextBuffer.bind(this);
+
+    // If processed audio doesn't exist (at start), play nothing
+    let newBuf =
+      this.nextBuf || audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
+    // Assign buffer to be played
+    currentTrack.buffer = newBuf;
+
+    this.currentTrack = currentTrack;
+
+    // Connect to browser-exposed output (destination)
+    this.currentTrack.connect(audioCtx.destination);
+    this.currentTrack.start(0, 0);
+  };
+}
+
 class Player {
   constructor(x, y, rotation = 0, name = "", playerId, canvas) {
     this.x = x;
@@ -183,63 +245,9 @@ class Player {
     this.ctx = this.canvas.getContext("2d");
     this.moved = false;
     this.name = name || "";
-
-    // todo: base case (first buffer)
-    // todo: register event listener
-    // todo: make sure frame callback fires
-
-    // We don't need to store the incoming channel as we recieve it's frames upon every callback
-    // Which is all that we need
-    // Producer consumer Queue
-    this.currentTrack = null;
-    this.nextBuf = null;
-
-    this.onBufferEnded();
+    this.posAudioWorker = new PositionalAudioWorker(this);
+    this.vols = [];
   }
-
-  // Copy to unused buffer
-  // Todo: add some sort of lock?
-  audioFrameCallback = async (buffer) => {
-    const newBuffer = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
-
-    // Unremovable for loop as AudioBuffers only expose data through getter method :(
-    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
-      // Float32Array with PCM data
-      const newChannelData = buffer.getChannelData(channel);
-
-      // todo: add DSP
-      for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
-        //this.vol is in [0, 1.0]
-        // audio needs to be in [-1.0, 1.0]
-        newChannelData[i] *= this.vol;
-      }
-
-      newBuffer.copyToChannel(newChannelData, channel);
-    }
-
-    this.nextBuf = newBuffer;
-    // console.log("enqueue");
-  };
-
-  onBufferEnded = async () => {
-    // this.bufferOutput.buffer = ...
-    // todo: is this a race condition? should this be after source assignment?
-    const currentTrack = audioCtx.createBufferSource();
-    let newBuf = this.nextBuf;
-    if (!newBuf) {
-      // console.log("missing buffer");
-      newBuf = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
-    } else {
-      // console.log("not missing buffer")
-    }
-    currentTrack.buffer = newBuf;
-    currentTrack.onended = this.onBufferEnded.bind(this);
-
-    this.currentTrack = currentTrack;
-
-    this.currentTrack.connect(audioCtx.destination);
-    this.currentTrack.start(0, 0);
-  };
 
   setRotation(rotation) {
     this.rotation = rotation;
@@ -254,18 +262,42 @@ class Player {
     return Math.sqrt((user.x - this.x) ** 2 + (user.y - this.y) ** 2);
   }
 
+  // Angle of player from user east of north/east of south depending on if other player is above or below, respectively
+  // Returns in radians
+  getAngle(user) {
+    const dx = user.x - this.x;
+    const dy = user.y - this.y;
+    return Math.atan(dx / Math.abs(dy));
+  }
+
   destroy() {}
 
   refresh() {}
 
   updateAudio(user) {
     let dist = this.getDistance(user);
-    // Hand crafted dropoff fn inspired by nature
-    // + 100 = sqrt(1e4s)
-    // if (this.moved) {
-      let vol = 1e4 / Math.pow(dist + 1e2, 2);
-      this.vol = vol;
-    // }
+
+    const angle = this.getAngle(user);
+    // scaledAngle \in [-1, 1]
+    const scaledAngle = angle / (Math.PI / 2);
+
+    // Hand crafted dropoff fn inspired by inverse square law
+    const scaleVol = (v) => 1e4 / Math.pow(v + 1e2, 2);
+    // Sigmoid on [0, 1]
+    const customSigmoid = (x) => 1 / (1 + Math.E ** (-10 * (x - 0.5)));
+
+    // [left, right]
+    let vol = scaleVol(dist);
+    vol = Math.sqrt(vol);
+    this.vols = [
+      vol + (scaledAngle < 0 ? Math.sqrt(vol) * 0.5 * -scaledAngle : 0),
+      vol + (scaledAngle > 0 ? Math.sqrt(vol) * 0.5 * scaledAngle : 0),
+    ];
+    console.log(this.vols);
+  }
+
+  getVols() {
+    return this.vols;
   }
 
   render() {
@@ -486,7 +518,7 @@ class Game {
         trackowner.audioTrack = remoteAudioTrack;
 
         remoteAudioTrack.setAudioFrameCallback(
-          trackowner.audioFrameCallback.bind(trackowner),
+          trackowner.posAudioWorker.onNewFrames.bind(trackowner.posAudioWorker),
           AUDIO_BUF_SIZE
         );
       } else {
