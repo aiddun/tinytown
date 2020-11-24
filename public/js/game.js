@@ -5,177 +5,17 @@ var TICK_HZ = 10;
 var IDLE_MINUTES = 10;
 var SAMPLE_RATE = 48e3;
 var NUM_CHANNELS = 2;
-var AudioContext = window.AudioContext || window.webkitAudioContext;
-var audioCtx = new AudioContext();
 var AUDIO_BUF_SIZE = 1024;
 
-// TODO: Replace with something better
-const stringHash = (s) => {
-  return (
-    s
-      .split("")
-      .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * 31 ** index, 0) %
-    2 ** 64
-  );
-};
-
-//todo: move
-const CSS_COLOR_NAMES = [
-  "AliceBlue",
-  "AntiqueWhite",
-  "Aqua",
-  "Aquamarine",
-  "Azure",
-  "Beige",
-  "Bisque",
-  "Black",
-  "BlanchedAlmond",
-  "Blue",
-  "BlueViolet",
-  "Brown",
-  "BurlyWood",
-  "CadetBlue",
-  "Chartreuse",
-  "Chocolate",
-  "Coral",
-  "CornflowerBlue",
-  "Cornsilk",
-  "Crimson",
-  "Cyan",
-  "DarkBlue",
-  "DarkCyan",
-  "DarkGoldenRod",
-  "DarkGray",
-  "DarkGrey",
-  "DarkGreen",
-  "DarkKhaki",
-  "DarkMagenta",
-  "DarkOliveGreen",
-  "DarkOrange",
-  "DarkOrchid",
-  "DarkRed",
-  "DarkSalmon",
-  "DarkSeaGreen",
-  "DarkSlateBlue",
-  "DarkSlateGray",
-  "DarkSlateGrey",
-  "DarkTurquoise",
-  "DarkViolet",
-  "DeepPink",
-  "DeepSkyBlue",
-  "DimGray",
-  "DimGrey",
-  "DodgerBlue",
-  "FireBrick",
-  "FloralWhite",
-  "ForestGreen",
-  "Fuchsia",
-  "Gainsboro",
-  "GhostWhite",
-  "Gold",
-  "GoldenRod",
-  "Gray",
-  "Grey",
-  "Green",
-  "GreenYellow",
-  "HoneyDew",
-  "HotPink",
-  "IndianRed",
-  "Indigo",
-  "Ivory",
-  "Khaki",
-  "Lavender",
-  "LavenderBlush",
-  "LawnGreen",
-  "LemonChiffon",
-  "LightBlue",
-  "LightCoral",
-  "LightCyan",
-  "LightGoldenRodYellow",
-  "LightGray",
-  "LightGrey",
-  "LightGreen",
-  "LightPink",
-  "LightSalmon",
-  "LightSeaGreen",
-  "LightSkyBlue",
-  "LightSlateGray",
-  "LightSlateGrey",
-  "LightSteelBlue",
-  "LightYellow",
-  "Lime",
-  "LimeGreen",
-  "Linen",
-  "Magenta",
-  "Maroon",
-  "MediumAquaMarine",
-  "MediumBlue",
-  "MediumOrchid",
-  "MediumPurple",
-  "MediumSeaGreen",
-  "MediumSlateBlue",
-  "MediumSpringGreen",
-  "MediumTurquoise",
-  "MediumVioletRed",
-  "MidnightBlue",
-  "MintCream",
-  "MistyRose",
-  "Moccasin",
-  "NavajoWhite",
-  "Navy",
-  "OldLace",
-  "Olive",
-  "OliveDrab",
-  "Orange",
-  "OrangeRed",
-  "Orchid",
-  "PaleGoldenRod",
-  "PaleGreen",
-  "PaleTurquoise",
-  "PaleVioletRed",
-  "PapayaWhip",
-  "PeachPuff",
-  "Peru",
-  "Pink",
-  "Plum",
-  "PowderBlue",
-  "Purple",
-  "RebeccaPurple",
-  "Red",
-  "RosyBrown",
-  "RoyalBlue",
-  "SaddleBrown",
-  "Salmon",
-  "SandyBrown",
-  "SeaGreen",
-  "SeaShell",
-  "Sienna",
-  "Silver",
-  "SkyBlue",
-  "SlateBlue",
-  "SlateGray",
-  "SlateGrey",
-  "Snow",
-  "SpringGreen",
-  "SteelBlue",
-  "Tan",
-  "Teal",
-  "Thistle",
-  "Tomato",
-  "Turquoise",
-  "Violet",
-  "Wheat",
-  "White",
-  "WhiteSmoke",
-  "Yellow",
-  "YellowGreen",
-];
+var AudioContext = window.AudioContext || window.webkitAudioContext;
+var audioCtx = new AudioContext();
 
 class PositionalAudioWorker {
-  // Process audio in real time using a double buffered approach
+  // Process audio frames from agora in real time using a double buffered approach
   // (process buffer_{n} of PCM data while simultaniusly playing buffer_{n-1}, then repeat for buffer_{n+1})
+  // Play modified audio ourselves w/ WebAudio's AudioBufferSourceNode rather than Agora's standard sdk method for unfiltered
 
-  // Parent must implement getVols() -> [number] | number[]
+  // Parent must implement getVols() -> [global_vol: number] | number[]
   constructor(parent) {
     this.parent = parent;
     // We don't need to store the incoming channel as we recieve it's frames upon every call of onNewFrames
@@ -188,6 +28,9 @@ class PositionalAudioWorker {
     this.nextBuffer();
   }
 
+  // Callback passed to agora's corresponding audioChannel
+  // called with each batch of new frames from remote player of size AUDIO_BUF_SIZE
+  // We apply our transformations and then save it for nextBuffer to pick up when it's done with its current frames
   onNewFrames = async (buffer) => {
     const newBuffer = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
 
@@ -202,6 +45,8 @@ class PositionalAudioWorker {
 
       // Perform DSP here on PCM array
       for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
+        // Heavy lifting done in gelVols
+        // todo: benchmark perf if per-frame transformations moved to closure
         newChannelData[i] *= vol;
       }
 
@@ -232,6 +77,16 @@ class PositionalAudioWorker {
     this.currentTrack.start(0, 0);
   };
 }
+
+// TODO: Replace with something better
+const stringHash = (s) => {
+  return (
+    s
+      .split("")
+      .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * 31 ** index, 0) %
+    2 ** 64
+  );
+};
 
 class Player {
   constructor(x, y, rotation = 0, name = "", playerId, canvas) {
@@ -293,7 +148,6 @@ class Player {
       vol + (scaledAngle < 0 ? Math.sqrt(vol) * 0.5 * -scaledAngle : 0),
       vol + (scaledAngle > 0 ? Math.sqrt(vol) * 0.5 * scaledAngle : 0),
     ];
-    console.log(this.vols);
   }
 
   getVols() {
@@ -390,6 +244,9 @@ class Game {
     this.timeoutTimer = null;
     this.movedInInterval = false;
     this.setupTimeoutTimer();
+
+    // Render clock (Currently 10fps strikes a balance between smoothness and performance (w/o interpolation))
+    setInterval(this.render.bind(this), 1 / TICK_HZ);
   }
 
   render() {
@@ -406,6 +263,8 @@ class Game {
       this.player.moved = false;
 
       // For some reason this is the fastest way to assign binary values in JS (at least v8). Microbenchmarked it.
+      // Not using closure compiler or any other JS optimizer for this project yet as
+      // I'm trying to use as few (build) dependencies as possible, (aka none rn).
       this.movedInInterval = !0;
 
       this.socket.emit("playerMovement", {
@@ -417,6 +276,7 @@ class Game {
   }
 
   setupControls(canvas) {
+    // Only listen for keys when focused on game (canvas)
     canvas.addEventListener("keydown", (event) => {
       const { key } = event;
 
@@ -473,8 +333,6 @@ class Game {
         event.preventDefault();
       }
     });
-
-    setInterval(this.render.bind(this), 1 / TICK_HZ);
   }
 
   setupNameInput = () => {
@@ -565,8 +423,6 @@ class Game {
     Object.values(players).forEach((player) => this.addPlayer(player));
 
     this.setupAudio(channel, token);
-    // Auto timeout after 15 mins
-    // TODO: Replace with system by activity/client focus/movement
   };
 
   onNewPlayer = (playerInfo) => {
@@ -612,6 +468,7 @@ class Game {
     document.getElementById("disconnected-text").innerHTML =
       "Disconnected due to inactivity. Please refresh the page to continue.";
 
+    // // Also show browser alert:
     // // Allow for dom to update
     // setTimeout(() => {
     //   alert("Disconnected due to inactivity. Please refresh to continue.");
@@ -644,3 +501,154 @@ class Game {
 
 this.game = new Game("game");
 game.render();
+
+// Colors assigned to players (all CSS color strings minus some bright ones hard to read on lime green)
+// todo: better curate colors, move to another file
+const CSS_COLOR_NAMES = [
+  "AliceBlue",
+  "AntiqueWhite",
+  "Aqua",
+  "Aquamarine",
+  "Azure",
+  "Beige",
+  "Bisque",
+  "Black",
+  "BlanchedAlmond",
+  "Blue",
+  "BlueViolet",
+  "Brown",
+  "BurlyWood",
+  "CadetBlue",
+  "Chartreuse",
+  "Chocolate",
+  "Coral",
+  "CornflowerBlue",
+  "Cornsilk",
+  "Crimson",
+  "Cyan",
+  "DarkBlue",
+  "DarkCyan",
+  "DarkGoldenRod",
+  "DarkGray",
+  "DarkGrey",
+  "DarkGreen",
+  "DarkKhaki",
+  "DarkMagenta",
+  "DarkOliveGreen",
+  "DarkOrange",
+  "DarkOrchid",
+  "DarkRed",
+  "DarkSalmon",
+  "DarkSeaGreen",
+  "DarkSlateBlue",
+  "DarkSlateGray",
+  "DarkSlateGrey",
+  "DarkTurquoise",
+  "DarkViolet",
+  "DeepPink",
+  "DeepSkyBlue",
+  "DimGray",
+  "DimGrey",
+  "DodgerBlue",
+  "FireBrick",
+  "FloralWhite",
+  "ForestGreen",
+  "Fuchsia",
+  "Gainsboro",
+  "GhostWhite",
+  "Gold",
+  "GoldenRod",
+  "Gray",
+  "Grey",
+  "Green",
+  "GreenYellow",
+  "HoneyDew",
+  "HotPink",
+  "IndianRed",
+  "Indigo",
+  "Ivory",
+  "Khaki",
+  "Lavender",
+  "LavenderBlush",
+  "LawnGreen",
+  "LemonChiffon",
+  "LightBlue",
+  "LightCoral",
+  "LightCyan",
+  "LightGoldenRodYellow",
+  "LightGray",
+  "LightGrey",
+  "LightGreen",
+  "LightPink",
+  "LightSalmon",
+  "LightSeaGreen",
+  "LightSkyBlue",
+  "LightSlateGray",
+  "LightSlateGrey",
+  "LightSteelBlue",
+  "LightYellow",
+  "Linen",
+  "Magenta",
+  "Maroon",
+  "MediumAquaMarine",
+  "MediumBlue",
+  "MediumOrchid",
+  "MediumPurple",
+  "MediumSeaGreen",
+  "MediumSlateBlue",
+  "MediumSpringGreen",
+  "MediumTurquoise",
+  "MediumVioletRed",
+  "MidnightBlue",
+  "MintCream",
+  "MistyRose",
+  "Moccasin",
+  "NavajoWhite",
+  "Navy",
+  "OldLace",
+  "Olive",
+  "OliveDrab",
+  "Orange",
+  "OrangeRed",
+  "Orchid",
+  "PaleGoldenRod",
+  "PaleGreen",
+  "PaleTurquoise",
+  "PaleVioletRed",
+  "PapayaWhip",
+  "PeachPuff",
+  "Peru",
+  "Pink",
+  "Plum",
+  "PowderBlue",
+  "Purple",
+  "RebeccaPurple",
+  "Red",
+  "RosyBrown",
+  "RoyalBlue",
+  "SaddleBrown",
+  "Salmon",
+  "SandyBrown",
+  "SeaGreen",
+  "SeaShell",
+  "Sienna",
+  "Silver",
+  "SkyBlue",
+  "SlateBlue",
+  "SlateGray",
+  "SlateGrey",
+  "Snow",
+  "SpringGreen",
+  "SteelBlue",
+  "Tan",
+  "Teal",
+  "Thistle",
+  "Tomato",
+  "Turquoise",
+  "Violet",
+  "Wheat",
+  "White",
+  "WhiteSmoke",
+  "Yellow",
+  "YellowGreen",
+];
