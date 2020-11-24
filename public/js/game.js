@@ -7,7 +7,7 @@ var SAMPLE_RATE = 48e3;
 var NUM_CHANNELS = 2;
 var AudioContext = window.AudioContext || window.webkitAudioContext;
 var audioCtx = new AudioContext();
-var AUDIO_BUF_SIZE = 4096;
+var AUDIO_BUF_SIZE = 1024;
 
 // TODO: Replace with something better
 const stringHash = (s) => {
@@ -191,8 +191,8 @@ class Player {
     // We don't need to store the incoming channel as we recieve it's frames upon every callback
     // Which is all that we need
     // Producer consumer Queue
-    this.bufferQ = [];
     this.currentTrack = null;
+    this.nextBuf = null;
 
     this.onBufferEnded();
   }
@@ -203,22 +203,21 @@ class Player {
     const newBuffer = audioCtx.createBuffer(2, AUDIO_BUF_SIZE, SAMPLE_RATE);
 
     // Unremovable for loop as AudioBuffers only expose data through getter method :(
-    for (let channel = 0; channel < AUDIO_BUF_SIZEbuffer.numberOfChannels; channel += 1) {
+    for (let channel = 0; channel < buffer.numberOfChannels; channel += 1) {
       // Float32Array with PCM data
       const newChannelData = buffer.getChannelData(channel);
 
       // todo: add DSP
-      // for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
-      //   // Math.random() is in [0; 1.0]
-      //   // audio needs to be in [-1.0; 1.0]
-      //   newChannelData[i] = Math.random() * 2 - 1;
-      // }
+      for (var i = 0; i < AUDIO_BUF_SIZE; i++) {
+        //this.vol is in [0, 1.0]
+        // audio needs to be in [-1.0, 1.0]
+        newChannelData[i] *= this.vol;
+      }
 
       newBuffer.copyToChannel(newChannelData, channel);
     }
 
     this.nextBuf = newBuffer;
-    this.bufferQ.push(newBuffer);
     // console.log("enqueue");
   };
 
@@ -226,8 +225,6 @@ class Player {
     // this.bufferOutput.buffer = ...
     // todo: is this a race condition? should this be after source assignment?
     const currentTrack = audioCtx.createBufferSource();
-    let buffer;
-    // while (buffer = );
     let newBuf = this.nextBuf;
     if (!newBuf) {
       // console.log("missing buffer");
@@ -262,16 +259,13 @@ class Player {
   refresh() {}
 
   updateAudio(user) {
-    // TODO: Change to x^-sqrt(2)
-    // if (this.bufferTrack) {
-    //   this.bufferTrack.stop();
+    let dist = this.getDistance(user);
+    // Hand crafted dropoff fn inspired by nature
+    // + 100 = sqrt(1e4s)
+    // if (this.moved) {
+      let vol = 1e4 / Math.pow(dist + 1e2, 2);
+      this.vol = vol;
     // }
-    if (this.audioTrack) {
-      let dist = this.getDistance(user);
-      dist = dist > 200 ? 200 : dist;
-      const vol = 200 - dist;
-      this.audioTrack.setVolume(vol);
-    }
   }
 
   render() {
