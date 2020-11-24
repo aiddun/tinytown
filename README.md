@@ -4,8 +4,8 @@ Audio requires Agora keys in game.js and .env
 
 To run: run `npm install` in project directory (first time only), then run `npm start` and navigate to 0.0.0.0:8081
 
-<br/>
+<hr/>
 
-screenshot:
+Screenshot:
 
 <img width="500" alt="11/15/20 screenshot" src="https://github.com/aiddun/tinytown/blob/main/screenshots/sc2.jpg">
