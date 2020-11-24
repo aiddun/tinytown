@@ -1,4 +1,4 @@
-websocket-based online town w/ socket.io and 100% native js web canvas site. (wip) real-time stereo positional audio filters with webaudio
+websocket-based online town w/ socket.io and 100% native js web canvas site. wip real-time stereo positional audio filters with webaudio
 
 positional audio requires agora keys in game.js and a .env file
 
