@@ -94,8 +94,6 @@ class Player {
     this.y = y;
     this.rotation = rotation;
     this.playerId = playerId;
-    // We need this because agora user ids can only be ints
-    this.idHash = stringHash(playerId);
     this.canvas = canvas;
     this.ctx = this.canvas.getContext("2d");
     this.moved = false;
@@ -143,10 +141,11 @@ class Player {
 
     // [left, right]
     let vol = scaleVol(dist);
-    vol = Math.sqrt(vol);
     this.vols = [
-      vol + (scaledAngle < 0 ? Math.sqrt(vol) * 0.5 * -scaledAngle : 0),
-      vol + (scaledAngle > 0 ? Math.sqrt(vol) * 0.5 * scaledAngle : 0),
+      0.7 * vol +
+        (scaledAngle < 0 ? customSigmoid(vol) * 0.2 * -scaledAngle : 0),
+      0.7 * vol +
+        (scaledAngle > 0 ? customSigmoid(vol) * 0.2 * scaledAngle : 0),
     ];
   }
 
@@ -417,6 +416,8 @@ class Game {
       : new Player(x, y, 0, name, playerId, this.canvas);
     this.players[playerId] = player;
     isUser && (this.player = player);
+
+    this.render();
   }
 
   // user initial join
@@ -505,8 +506,8 @@ game.render();
 
 // Colors assigned to players (all CSS color strings minus some bright ones hard to read on lime green)
 // todo: better curate colors, move to another file
-  const CSS_COLOR_NAMES = [
-"AliceBlue",
+const CSS_COLOR_NAMES = [
+  "AliceBlue",
   "AntiqueWhite",
   "Aqua",
   "Aquamarine",
