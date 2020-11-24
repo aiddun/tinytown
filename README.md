@@ -2,7 +2,7 @@ Virtual 'town' for online events with positional audio. Features a small engine 
 
 Audio requires Agora keys in game.js and .env
 
-To run: `npm install` (first time only) and `node server.js` and navigate to 0.0.0.0:8081
+To run: run `npm install` in project directory (first time only), then run `npm start` and navigate to 0.0.0.0:8081
 
 <br/>
 
