@@ -49,7 +49,7 @@ export default class Game extends PIXI.Application {
 
   //     channel.emit("chat message", "a short message sent to the server");
   //   });
-  // }
+  }
 
   setupKeysDown = () => {
     this.keysdown = new Set();
