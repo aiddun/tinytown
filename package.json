@@ -7,11 +7,23 @@
     "start": "next start"
   },
   "dependencies": {
+    "@geckos.io/client": "^1.7.1",
+    "@inlet/react-pixi": "^6.0.7",
     "@supabase/supabase-js": "^1.0.1",
+    "agora-rtc-sdk-ng": "^4.2.1",
+    "autoprefixer": "^10.1.0",
     "next": "latest",
-    "react": "^16.13.1",
-    "react-dom": "^16.13.1",
-    "swr": "0.2.3"
+    "pixi.js": "^5.3.7",
+    "postcss": "^8.2.2",
+    "react": "^17.0.1",
+    "react-awesome-button": "^6.5.1",
+    "react-dom": "^17.0.1",
+    "rxjs": "^6.6.3",
+    "sass": "^1.32.0",
+    "socket.io": "^3.0.5",
+    "socket.io-client": "^3.0.5",
+    "swr": "^0.2.3",
+    "tailwindcss": "^2.0.2"
   },
   "license": "MIT"
 }
