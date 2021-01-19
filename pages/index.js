@@ -3,7 +3,6 @@ import { useUser } from "../components/UserContext";
 import { supabase } from "../utils/initSupabase";
 import SupabaseAuth from "../components/SupabaseAuth";
 import { useState } from "react";
-import { AwesomeButton } from "react-awesome-button";
 import JoinTown from "../components/JoinTown";
 // import OldGame from "../components/Game/OldGame";
 import dynamic from "next/dynamic";
@@ -38,13 +37,13 @@ const Index = () => {
   //   );
   // }
 
-  const LoggedIn = true;
+  const [loggedIn, setloggedin] = useState(false);
 
   return (
     <div>
-        <p>test</p>
-      {!LoggedIn && <JoinTown />}
-      <div style={{ filter: LoggedIn ? "none" : "blur(4px)" }}>
+      <p>test</p>
+      {!loggedIn && <JoinTown setloggedin={setloggedin} />}
+      <div style={{ filter: loggedIn ? "none" : "blur(4px)" }}>
         {/* <Game></Game> */}
         <PixiGameNoSSR />
       </div>

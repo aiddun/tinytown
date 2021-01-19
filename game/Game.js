@@ -1,66 +1,109 @@
 import * as PIXI from "pixi.js";
 // import { asyncScheduler, fromEvent } from "rxjs";
 // import { throttleTime } from "rxjs/operators";
-import { Player } from "./Entities/Player";
+import { Player, User } from "./Entities/Player";
 import geckos from "@geckos.io/client";
 
-const TICK_RATE = process.env.TICK_RATE;
-
 export default class Game extends PIXI.Application {
-  constructor(canvasRef, setGameState) {
+  constructor(canvasRef, gameComponentState, setGameComponentState) {
     super({
       view: canvasRef.current,
-      width: 700,
-      height: 500,
+      width: 1050,
+      height: 750,
       resolution: window.devicePixelRatio,
       autoDensity: true,
       antialias: true,
       transparent: true,
+      resolution: 2,
     });
     this.canvasRef = canvasRef;
+    this.gameComponentState = gameComponentState;
+    this.setGameState = setGameComponentState;
+    this.msCount = 0;
 
-    this.setGameState = setGameState;
-
-    this.player = new Player(50, 50, "disdf", this);
-    this.stage.addChild(this.player.container);
-
-    // 10-tick cycles
-    this.tickFuncs = new Set();
-    setInterval(() => this.tickFuncs.forEach((f) => f()), 1000 / 10);
-
-    this.setupKeysDown();
-    this.tickFuncs.add(this.onKeysDown);
-
-    // // HACK
-    // // TODO: Remove hack and find a better throttling fix
-    // setInterval(() => this.keysdown.clear(), 1000);
-
-  //   const channel = geckos(); // default port is 9208
-
-  //   channel.onConnect((error) => {
-  //     if (error) {
-  //       console.error(error.message);
-  //       return;
-  //     }
-
-  //     channel.on("data", (data) => {
-  //       console.log(`You got the message ${data}`);
-  //     });
-
-  //     channel.emit("chat message", "a short message sent to the server");
-  //   });
-  }
-
-  setupKeysDown = () => {
+    this.players = {};
     this.keysdown = new Set();
 
+    this.udpChannel = geckos(); // default port is 9208
+
+    this.udpChannel.onConnect((error) => {
+      if (error) {
+        console.error(error.message);
+        return;
+      }
+
+      this.udpChannel.on("setup", (data) => this.setup(data));
+      this.udpChannel.on("data", this.ondata);
+      this.udpChannel.on("newPlayer", ({ id, player }) => {
+        const { x, y, name, color } = player;
+        this.players[id] = new Player(x, y, id, this, name, color);
+      });
+      this.udpChannel.emit("joinRoom", { room: "test" });
+      this.udpChannel.on("userDisconnect", ({ id }) => {
+        if (id in this.players) {
+          this.players[id].destroy();
+          delete this.players[id];
+        }
+      });
+    });
+  }
+
+  setup = (data) => {
+    const { players } = data;
+    Object.entries(players).forEach(([id, player]) => {
+      const { x, y, name, color } = player;
+      if (id === this.udpChannel.id) {
+        this.setupPlayer(player);
+      } else {
+        const newPlayer = new Player(x, y, id, this, name, color);
+        this.players[id] = newPlayer;
+      }
+    });
+  };
+
+  ondata = (data) => {
+    const room = data;
+    // console.log(this.players)
+    Object.entries(room).forEach(([id, player]) => {
+      // Ignore player bc player is always right. Should anyways but just in case
+      if (id === this.udpChannel.id) return;
+      const { x, y, name } = player;
+      if (id in this.players) {
+        if (x && y) this.players[id].setTargetPosition(x, y);
+        if (name) this.players[id].setName(name);
+      }
+    });
+  };
+
+  setupPlayer = (player) => {
+    const { x, y, name, color, id } = player;
+    this.players.player = new User(x, y, id, this, name, color);
+
+    // // // 10-tick cycles
+    // this.tickFuncs = new Set();
+    // setInterval(() => this.tickFuncs.forEach((f) => f()), 100);
+
+    this.setupKeysDown();
+    this.ticker.add(this.onKeysDown);
+    // this.tickFuncs.add(this.onKeysDown);
+    // HACK
+    // TODO: Remove hack and find a better throttling fix
+    // setInterval(() => this.keysdown.clear(), 100);
+  };
+
+  setupKeysDown = () => {
     // Keydown event
     this.canvasRef.current.addEventListener("keydown", ({ key }) =>
       this.keysdown.add(key.toLowerCase())
     );
+    // always listen for keyup
     this.canvasRef.current.addEventListener("keyup", ({ key }) =>
       this.keysdown.delete(key.toLowerCase())
     );
+
+    this.canvasRef.current.addEventListener("focusout", () => {
+      this.keysdown.clear();
+    });
 
     {
       // this.keyDownObservable = fromEvent(this.canvasRef.current, "keydown");
@@ -76,24 +119,9 @@ export default class Game extends PIXI.Application {
     }
   };
 
-  onKeysDown = () => {
-    const V = 6;
-    const BOOST_FACTOR = 2;
-
-    let dx = 0;
-    let dy = 0;
-    let boost = false;
-
-    this.keysdown.forEach((key) => {
-      if (key === "w") dy -= V;
-      else if (key === "a") dx -= V;
-      else if (key === "s") dy += V;
-      else if (key === "d") dx += V;
-      else if (key === "shift") boost = true;
-    });
-
-    this.player.boost = boost;
-    this.player.setTargetDelta(dx, dy);
+  // hack
+  gameComponentDidUpdate = (newState) => {
+    this.gameComponentState = newState;
   };
 
   onTick = () => {};

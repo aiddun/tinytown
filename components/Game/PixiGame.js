@@ -32,6 +32,7 @@ export default class PixiGame extends Component {
       audioStatus: "connecting...",
       disconnected: false,
       disconnectedStatus: "",
+      nameInput: "",
     };
   }
 
@@ -49,8 +50,7 @@ export default class PixiGame extends Component {
     // this.setupTimeoutTimer();
 
     const setGameState = this.setState.bind(this);
-    console.log(this.canvasRef)
-    this.game = new Game(this.canvasRef, setGameState);
+    this.game = new Game(this.canvasRef, this.state, setGameState);
   }
 
   // ontick(timeStamp) {
@@ -68,19 +68,23 @@ export default class PixiGame extends Component {
   //   }
   // }
 
+  onNameInput = (e) => {
+    this.setState({ nameInput: e.target.value });
+  };
+
+  componentDidUpdate = () => {
+    this.game.gameComponentDidUpdate(this.state);
+  };
+
   render = () => {
     return (
       <div>
-        <h2>tiny town</h2>
-        <h3>
-          move around town with <strong>positional audio</strong>
-        </h3>
         {/* {this.state.disconnected ? (
           <p>{this.state.disconnectedStatus}</p>
         ) : ( */}
         <div>
           <canvas
-            className={`${styles.game} rounded-xl focus:outline-none`}
+            className={`${styles.game} rounded-xl focus:outline-none mx-auto`}
             ref={this.canvasRef}
             id="game"
             tabIndex="-1"
@@ -88,7 +92,6 @@ export default class PixiGame extends Component {
         </div>
         <br />
         <input type="text" placeholder="Your name" onInput={this.onNameInput} />
-        <p>use arrow keys to move</p>
         <strong>{this.state.audioStatus}</strong>
       </div>
     );

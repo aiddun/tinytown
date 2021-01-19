@@ -1,7 +1,72 @@
-import React from "react";
+import React, { useState } from "react";
+import { AwesomeButton } from "react-awesome-button";
 
-const JoinTown = (props) => {
+const CreateRoomButton = ({ setloggedin, setTravelSuccess }) => (
+  <AwesomeButton
+    type="primary"
+    className="w-full h-full rounded-3xl mx-auto 
+            text-center 
+            transition duration-300 ease-in-out 
+            focus:outline-none "
+    style={{
+      // "margin-left": "0.25rem !important",
+      "--button-default-height": "100%",
+      "--button-default-border-radius": "1.5rem",
+      "--button-raise-level": "4px",
+      "--button-primary-color": "white",
+      "--button-primary-color-dark": "#b9b500",
+      "--button-primary-color-light": "#6c6a00",
+      "--button-primary-color-hover": "#fffb3e",
+      "--button-primary-color-active": "#fffb3e",
+      "--button-primary-border": "none",
+    }}
+    onPress={() => {
+      setTravelSuccess(true);
+      setTimeout(() => setloggedin(true), 500);
+    }}
+  >
+    <div className="align-middle text-xl  	">
+      🏙️ <br /> create room
+    </div>
+  </AwesomeButton>
+);
+
+const RoomCodeSubmitButton = ({
+  correcttowncode,
+  setTravelSuccess,
+  seterror,
+}) => (
+  // Room code submit button
+  <AwesomeButton
+    type="primary"
+    className="ml-1 h-20 w-20 rounded-md bg-green-200
+              transition duration-300 ease-in-out 
+              focus:outline-none hover:scale-110"
+    onPress={() => {
+      // seterror("sdfsdf");
+      setTravelSuccess(true);
+    }}
+    style={{
+      "margin-left": "0.25rem !important",
+      "--button-default-height": "5rem",
+      "--button-default-border-radius": "0.375rem",
+      "--button-raise-level": "1px",
+    }}
+  >
+    <span
+      style={{
+        transition: "transform 2s ease-in",
+        transform: correcttowncode ? "translate(100vw, -100vh)" : "unset",
+      }}
+    >
+      ✈️
+    </span>
+  </AwesomeButton>
+);
+
+const JoinTown = ({ setloggedin }) => {
   const [error, seterror] = useState("");
+  const [travelSuccess, setTravelSuccess] = useState(false);
 
   return (
     <div className="absolute w-screen z-20">
@@ -16,29 +81,10 @@ const JoinTown = (props) => {
             </h1>
           </div>
           <div className="grid grid-cols-3 h-full row-span-3 px-24 gap-10">
-            <AwesomeButton
-              type="primary"
-              className="w-full h-full rounded-3xl mx-auto 
-                          text-center 
-                          transition duration-300 ease-in-out 
-                          focus:outline-none "
-              style={{
-                // "margin-left": "0.25rem !important",
-                "--button-default-height": "100%",
-                "--button-default-border-radius": "1.5rem",
-                "--button-raise-level": "4px",
-                "--button-primary-color": "white",
-                "--button-primary-color-dark": "#b9b500",
-                "--button-primary-color-light": "#6c6a00",
-                "--button-primary-color-hover": "#fffb3e",
-                "--button-primary-color-active": "#fffb3e",
-                "--button-primary-border": "none",
-              }}
-            >
-              <div className="align-middle text-xl  	">
-                🏙️ <br /> create room
-              </div>
-            </AwesomeButton>
+            <CreateRoomButton
+              setloggedin={setloggedin}
+              setTravelSuccess={setTravelSuccess}
+            />
             <div className="w-full h-full bg-white rounded-3xl mx-auto text-center col-span-2 flex">
               <div className="m-auto">
                 <p className="text-xl font-medium">enter town code</p>
@@ -52,25 +98,15 @@ const JoinTown = (props) => {
                       focus:outline-none focus:border-2  focus:border-gray-600"
                     placeholder="000000"
                   />
-                  {/* Room code submit button */}
-                  <AwesomeButton
-                    type="primary"
-                    className="ml-1 h-20 w-20 rounded-md bg-green-200
-                                transition duration-300 ease-in-out 
-                                focus:outline-none hover:scale-110"
-                    onClick={() => seterror("test")}
-                    style={{
-                      "margin-left": "0.25rem !important",
-                      "--button-default-height": "5rem",
-                      "--button-default-border-radius": "0.375rem",
-                      "--button-raise-level": "1px",
-                    }}
-                  >
-                    ✈️
-                  </AwesomeButton>
+                  <RoomCodeSubmitButton
+                    correcttowncode={travelSuccess}
+                    setTravelSuccess={setTravelSuccess}
+                    seterror={seterror}
+                    setloggedin={setloggedin}
+                  />
                 </div>
                 {/* Room error code */}
-                <p className="text-red-400">{error}</p>
+                <p className="text-red-700">{error}</p>
               </div>
             </div>
           </div>
