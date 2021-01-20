@@ -7,16 +7,18 @@ var RADIUS = 15;
 var MUTE_TEXTURE = PIXI.Texture.from("/mute.svg");
 
 export class Player extends PixiEntity {
-  constructor(x, y, playerId, game, name = "", color = 0xff0000) {
+  constructor(x, y, playerId, game, name = "", color = "0xff0000") {
     super(game, x, y);
     this.nextX = x;
     this.nextY = y;
     this.boost = false;
 
     this.playerId = playerId;
-    // We need this because agora user ids can only be ints
-    // this.idHash = stringHash(playerId);
+
     this.name = name;
+    this.nameChanged = false;
+    this.color = color;
+    this.colorChanged = false;
 
     this.muted = false;
     // this.audioTrack = null;
@@ -56,6 +58,15 @@ export class Player extends PixiEntity {
     this.nextY += y;
   }
 
+  setColor(color) {
+    this.color = color;
+
+    this.graphic.clear();
+    this.graphic.beginFill(PIXI.utils.string2hex(this.color));
+    this.graphic.drawCircle(0, 0, RADIUS); // drawCircle(x, y, radius)
+    this.graphic.endFill();
+  }
+
   setName(name) {
     this.name = name;
     this.nameText.text = name;
@@ -91,7 +102,7 @@ export class Player extends PixiEntity {
     // this.graphic.beginFill(0x0); // White border
     // this.graphic.drawCircle(0, 0, RADIUS * 1.05); // drawCircle(x, y, radius)
     // this.graphic.endFill();
-    this.graphic.beginFill(0xe74c3c); // Red
+    this.graphic.beginFill(this.color);
     this.graphic.drawCircle(0, 0, RADIUS); // drawCircle(x, y, radius)
     this.graphic.endFill();
 
@@ -156,6 +167,7 @@ export class Player extends PixiEntity {
   }
 
   destructor() {
+    console.log(`destructing ${this.playerId}`)
     super.destructor();
   }
 }
@@ -169,15 +181,37 @@ export class User extends Player {
   updateAudio() {}
 
   onTick() {
+    // Check for name on every tick, but only send every 10 or so
+    const gameState = this.game.gameComponentState;
+
+    // Check if name changed
+    const gameStateName = gameState.nameInput;
+    if (this.name !== gameStateName) {
+      this.setName(gameStateName);
+      this.nameChanged = true;
+    }
+
+    // Check if color changed
+    let colorChanged = false;
+    const gameStateColor = gameState.colorInput;
+    if (gameStateColor.length != 0 && this.color !== gameStateColor) {
+      this.setColor(gameStateColor);
+      this.colorChanged = true;
+    }
+
     const deltaMS = this.game.ticker.elapsedMS;
     const msCount = (this.msCount += deltaMS);
     if (msCount < 100) return;
 
-    const gameStateName = this.game.gameComponentState.nameInput;
-    if (gameStateName !== this.name) {
-      this.setName(gameStateName);
+    if (this.nameChanged) {
       this.emitNameChange();
+      this.nameChanged = false;
     }
+    if (this.colorChanged) {
+      this.emitColorChange();
+      this.colorChanged = false;
+    }
+
     // Move V_S units/s for .1 s
     const V_S = 75;
     const BOOST_FACTOR = 2;
@@ -219,5 +253,9 @@ export class User extends Player {
 
   emitMovement() {
     this.game.udpChannel.emit("move", { player: { x: this.x, y: this.y } });
+  }
+
+  emitColorChange() {
+    this.game.udpChannel.emit("colorChange", { player: { color: this.color } });
   }
 }

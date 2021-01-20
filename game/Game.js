@@ -5,17 +5,26 @@ import { Player, User } from "./Entities/Player";
 import geckos from "@geckos.io/client";
 
 export default class Game extends PIXI.Application {
-  constructor(canvasRef, gameComponentState, setGameComponentState) {
+  constructor(
+    roomId,
+    height,
+    width,
+    canvasRef,
+    gameComponentState,
+    setGameComponentState
+  ) {
     super({
       view: canvasRef.current,
-      width: 1050,
-      height: 750,
+      width: width,
+      height: height,
       resolution: window.devicePixelRatio,
       autoDensity: true,
       antialias: true,
       transparent: true,
       resolution: 2,
     });
+
+    this.roomId = roomId;
     this.canvasRef = canvasRef;
     this.gameComponentState = gameComponentState;
     this.setGameState = setGameComponentState;
@@ -24,10 +33,12 @@ export default class Game extends PIXI.Application {
     this.players = {};
     this.keysdown = new Set();
 
-    this.udpChannel = geckos(); // default port is 9208
+    console.log(this.roomId);
+    this.udpChannel = geckos({ authorization: this.roomId }); // default port is 9208
 
     this.udpChannel.onConnect((error) => {
       if (error) {
+        console.log("err")
         console.error(error.message);
         return;
       }
@@ -38,7 +49,7 @@ export default class Game extends PIXI.Application {
         const { x, y, name, color } = player;
         this.players[id] = new Player(x, y, id, this, name, color);
       });
-      this.udpChannel.emit("joinRoom", { room: "test" });
+      this.udpChannel.emit("joinRoom", { room: this.roomId });
       this.udpChannel.on("userDisconnect", ({ id }) => {
         if (id in this.players) {
           this.players[id].destroy();
@@ -49,9 +60,14 @@ export default class Game extends PIXI.Application {
   }
 
   setup = (data) => {
-    const { players } = data;
+    const { players, error } = data;
+    if (error) {
+      alert("Error: room does not exist");
+      return;
+    }
     Object.entries(players).forEach(([id, player]) => {
       const { x, y, name, color } = player;
+      console.log(color);
       if (id === this.udpChannel.id) {
         this.setupPlayer(player);
       } else {
@@ -64,13 +80,16 @@ export default class Game extends PIXI.Application {
   ondata = (data) => {
     const room = data;
     // console.log(this.players)
-    Object.entries(room).forEach(([id, player]) => {
+    Object.entries(room).forEach(([id, playerData]) => {
       // Ignore player bc player is always right. Should anyways but just in case
       if (id === this.udpChannel.id) return;
-      const { x, y, name } = player;
+      const { x, y, name, color } = playerData;
       if (id in this.players) {
-        if (x && y) this.players[id].setTargetPosition(x, y);
-        if (name) this.players[id].setName(name);
+        console.log(color);
+        const player = this.players[id];
+        if (x && y) player.setTargetPosition(x, y);
+        if (name) player.setName(name);
+        if (color) player.setColor(color);
       }
     });
   };

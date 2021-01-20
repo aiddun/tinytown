@@ -5,7 +5,6 @@ import SupabaseAuth from "../components/SupabaseAuth";
 import { useState } from "react";
 import JoinTown from "../components/JoinTown";
 // import OldGame from "../components/Game/OldGame";
-import dynamic from "next/dynamic";
 
 const fetcher = (url, token) =>
   fetch(url, {
@@ -14,10 +13,6 @@ const fetcher = (url, token) =>
     credentials: "same-origin",
   }).then((res) => res.json());
 
-// Game component has to be dynamic
-const PixiGameNoSSR = dynamic(() => import("../components/Game/PixiGame"), {
-  ssr: false,
-});
 
 const Index = () => {
   // const { user, session } = useUser();
@@ -43,10 +38,7 @@ const Index = () => {
     <div>
       <p>test</p>
       {!loggedIn && <JoinTown setloggedin={setloggedin} />}
-      <div style={{ filter: loggedIn ? "none" : "blur(4px)" }}>
-        {/* <Game></Game> */}
-        <PixiGameNoSSR />
-      </div>
+ 
       {/* <p
         style={{
           display: "inline-block",

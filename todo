@@ -1,17 +1,19 @@
 high:
-add movement onkeydown before throttle
 implement full mute
-[x] lose focus and move forever bug
-lag on refresh
+network errors
 
 med:
+add movement onkeydown before throttle
 netcode optimization
 critical over tcp websockets
 go back if player gets too far (ex. 3 seconds away)
 timestamping for OOO packets
 disconnect/reconnecting prompt
 type safety
+sync websocket disconnect with udp (websocket instant)
+idle -> kick
 
 low:
 add video
 customization
+make color + name debounced realtime
