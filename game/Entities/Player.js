@@ -102,7 +102,7 @@ export class Player extends PixiEntity {
     // this.graphic.beginFill(0x0); // White border
     // this.graphic.drawCircle(0, 0, RADIUS * 1.05); // drawCircle(x, y, radius)
     // this.graphic.endFill();
-    this.graphic.beginFill(this.color);
+    this.graphic.beginFill(PIXI.utils.string2hex(this.color));
     this.graphic.drawCircle(0, 0, RADIUS); // drawCircle(x, y, radius)
     this.graphic.endFill();
 

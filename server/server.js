@@ -53,7 +53,7 @@ io.onConnection((channel) => {
   });
 
   channel.on("joinRoom", ({ room, name = "", color }) => {
-    if (!color) color = getRandomInt(0xffffff);
+    if (!color) color = `#${getRandomInt(0xffffff).toString(16)}`;
     if (room) {
       if (!(room in rooms)) {
         channel.emit("setup", { error: true });
@@ -155,7 +155,7 @@ const limiter = rateLimit({
 });
 
 // apply to all requests
-app.use(limiter);
+app.use("/validtown", limiter);
 
 app.get("/newtown", (req, res) => {
   const roomId = genRoom();

@@ -33,12 +33,11 @@ export default class Game extends PIXI.Application {
     this.players = {};
     this.keysdown = new Set();
 
-    console.log(this.roomId);
     this.udpChannel = geckos({ authorization: this.roomId }); // default port is 9208
 
     this.udpChannel.onConnect((error) => {
       if (error) {
-        console.log("err")
+        console.log("err");
         console.error(error.message);
         return;
       }
@@ -67,7 +66,6 @@ export default class Game extends PIXI.Application {
     }
     Object.entries(players).forEach(([id, player]) => {
       const { x, y, name, color } = player;
-      console.log(color);
       if (id === this.udpChannel.id) {
         this.setupPlayer(player);
       } else {
@@ -79,13 +77,11 @@ export default class Game extends PIXI.Application {
 
   ondata = (data) => {
     const room = data;
-    // console.log(this.players)
     Object.entries(room).forEach(([id, playerData]) => {
       // Ignore player bc player is always right. Should anyways but just in case
       if (id === this.udpChannel.id) return;
       const { x, y, name, color } = playerData;
       if (id in this.players) {
-        console.log(color);
         const player = this.players[id];
         if (x && y) player.setTargetPosition(x, y);
         if (name) player.setName(name);
@@ -96,6 +92,7 @@ export default class Game extends PIXI.Application {
 
   setupPlayer = (player) => {
     const { x, y, name, color, id } = player;
+    this.setGameState({ colorInput: color });
     this.players.player = new User(x, y, id, this, name, color);
 
     // // // 10-tick cycles
@@ -104,6 +101,12 @@ export default class Game extends PIXI.Application {
 
     this.setupKeysDown();
     this.ticker.add(this.onKeysDown);
+
+    console.log(color)
+    this.setGameState({
+      colorInput: color,
+      gameStatusText: "audio connecting",
+    });
     // this.tickFuncs.add(this.onKeysDown);
     // HACK
     // TODO: Remove hack and find a better throttling fix

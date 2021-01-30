@@ -5,6 +5,10 @@ import styles from "./game.module.scss";
 import Game from "../../game/Game";
 import { AwesomeButton } from "react-awesome-button";
 import { useRouter } from "next/router";
+import { throttle } from "lodash";
+import Link from "next/link";
+
+import BottomMenu from "./BottomMenu";
 
 // Can be public
 // We generate token serverside
@@ -79,14 +83,17 @@ export default class PixiGame extends Component {
     this.player = null;
     this.players = {};
     this.canvasRef = createRef();
+    // To avoid lag due to high rerenders on the color picker, we set the color value using the ref
+    this.colorRef = React.createRef();
 
     this.state = {
-      audioStatus: "connecting...",
+      gameConnected: false,
+      audioConnected: false,
       disconnected: false,
       disconnectedStatus: "",
       nameInput: "",
       colorInput: "",
-      error: true,
+      error: false,
       errorMsg: "town not found",
     };
   }
@@ -134,21 +141,53 @@ export default class PixiGame extends Component {
     this.setState({ nameInput: e.target.value });
   };
 
-  onColorInput = (e) => {
+  onColorInput = async (e) => {
     this.setState({ colorInput: e.target.value });
   };
 
-  componentDidUpdate = () => {
+  throttledOnColorInput = throttle(this.onColorInput, 50);
+
+  componentDidUpdate = (prevProps, prevState) => {
     this.game.gameComponentDidUpdate(this.state);
+    if (prevState.colorInput !== this.state.colorInput) {
+      // For some reason I decided that all server colors should be decimal literals for hex numbers
+      // Need to change at some point
+      this.colorRef.current.value = this.state.colorInput;
+    }
   };
 
   render = () => {
+    const { gameConnected, audioConnected } = this.state;
+
+    let gameStatusText;
+    if (gameConnected && audioConnected) gameStatusText = "connected";
+    else if (gameConnected && !audioConnected)
+      gameStatusText = "audio connecting";
+    else if (!gameConnected && audioConnected)
+      gameStatusText = "game connecting";
+    else if (!gameConnected && !audioConnected) gameStatusText = "connecting";
+
     return (
       <div style={{ backdropFilter: this.state.error ? "blur(2px)" : "unset" }}>
         {/* {this.state.disconnected ? (
           <p>{this.state.disconnectedStatus}</p>
         ) : ( */}
         {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
+        <div
+          className="rounded-xl mx-auto bg-gray-100 h-16 my-5"
+          style={{ width: GAME_WIDTH }}
+        >
+          <div className="h-full flex justify-between items-center px-5">
+            <Link href="/">
+              <a>
+                <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
+              </a>
+            </Link>
+            <span className="leading-3 text-right">
+              code <h2 className="text-2xl font-semibold">{this.props.roomId}</h2>
+            </span>
+          </div>
+        </div>
         <div>
           <canvas
             className={`${styles.game} rounded-xl focus:outline-none mx-auto`}
@@ -156,26 +195,15 @@ export default class PixiGame extends Component {
             id="game"
             tabIndex="-1"
           ></canvas>
+          <div className="">foo</div>
         </div>
-        <div
-          className="rounded-xl mx-auto bg-gray-100 h-40 mt-5"
-          style={{ width: GAME_WIDTH }}
-        >
-          <div className="mx-auto text-center pt-5">
-            <form autoComplete="off" id="search_form" method="post" action="">
-              <input
-                type="text"
-                autoComplete="off"
-                // placeholder="Your name"
-                onInput={this.onNameInput}
-              />
-              <input type="color" onChange={this.onColorInput}></input>
-            </form>
-
-            <br />
-            <strong>{this.state.audioStatus}</strong>
-          </div>
-        </div>
+        <BottomMenu
+          width={GAME_WIDTH}
+          gameStatusText={this.state.gameStatusText}
+          onNameInput={this.onNameInput}
+          colorRef={this.colorRef}
+          throttledOnColorInput={this.throttledOnColorInput}
+        />
       </div>
     );
   };

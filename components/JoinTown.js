@@ -26,7 +26,7 @@ const CreateRoomButton = ({ setloggedin, setTravelSuccess }) => {
       }}
       onPress={() => {
         setTravelSuccess(true);
-        setTimeout(() => router.push("/newtown"), 300);
+        setTimeout(() => router.push("/new"), 300);
       }}
     >
       <div className="align-middle text-xl  	">
