@@ -27,13 +27,16 @@ export default class Game extends PIXI.Application {
     this.roomId = roomId;
     this.canvasRef = canvasRef;
     this.gameComponentState = gameComponentState;
-    this.setGameState = setGameComponentState;
-    this.msCount = 0;
+    this.setGameComponentState = setGameComponentState;
 
     this.players = {};
     this.keysdown = new Set();
 
     this.udpChannel = geckos({ authorization: this.roomId }); // default port is 9208
+
+    // Setup stage interactivity for click movement
+    this.stage.interactive = true;
+    this.stage.hitArea = new PIXI.Rectangle(0, 0, width, height);
 
     this.udpChannel.onConnect((error) => {
       if (error) {
@@ -47,6 +50,9 @@ export default class Game extends PIXI.Application {
       this.udpChannel.on("newPlayer", ({ id, player }) => {
         const { x, y, name, color } = player;
         this.players[id] = new Player(x, y, id, this, name, color);
+        this.setGameComponentState({
+          playerCount: Object.keys(this.players).length,
+        });
       });
       this.udpChannel.emit("joinRoom", { room: this.roomId });
       this.udpChannel.on("userDisconnect", ({ id }) => {
@@ -54,6 +60,9 @@ export default class Game extends PIXI.Application {
           this.players[id].destroy();
           delete this.players[id];
         }
+        this.setGameComponentState({
+          playerCount: Object.keys(this.players).length,
+        });
       });
     });
   }
@@ -72,6 +81,9 @@ export default class Game extends PIXI.Application {
         const newPlayer = new Player(x, y, id, this, name, color);
         this.players[id] = newPlayer;
       }
+    });
+    this.setGameComponentState({
+      playerCount: Object.keys(this.players).length,
     });
   };
 
@@ -92,18 +104,13 @@ export default class Game extends PIXI.Application {
 
   setupPlayer = (player) => {
     const { x, y, name, color, id } = player;
-    this.setGameState({ colorInput: color });
+    this.setGameComponentState({ colorInput: color });
     this.players.player = new User(x, y, id, this, name, color);
-
-    // // // 10-tick cycles
-    // this.tickFuncs = new Set();
-    // setInterval(() => this.tickFuncs.forEach((f) => f()), 100);
 
     this.setupKeysDown();
     this.ticker.add(this.onKeysDown);
 
-    console.log(color)
-    this.setGameState({
+    this.setGameComponentState({
       colorInput: color,
       gameStatusText: "audio connecting",
     });
@@ -111,6 +118,11 @@ export default class Game extends PIXI.Application {
     // HACK
     // TODO: Remove hack and find a better throttling fix
     // setInterval(() => this.keysdown.clear(), 100);
+
+    this.stage.click = (e) => {
+      const point = e.data.global;
+      this.players.player.setTargetPosition(point.x, point.y);
+    };
   };
 
   setupKeysDown = () => {
@@ -126,19 +138,6 @@ export default class Game extends PIXI.Application {
     this.canvasRef.current.addEventListener("focusout", () => {
       this.keysdown.clear();
     });
-
-    {
-      // this.keyDownObservable = fromEvent(this.canvasRef.current, "keydown");
-      // this.keyDownObservable.subscribe(({ key }) => {
-      //   this.keysdown.add(key);
-      // });
-      // Keyup event
-      // this.keyUpObservable = fromEvent(this.canvasRef.current, "keyup");
-      // this.keyUpObservable.subscribe(({ key }) => {
-      //   console.log("here");
-      //   this.keysdown.delete(key);
-      // });
-    }
   };
 
   // hack

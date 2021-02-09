@@ -1,17 +1,11 @@
 const BottomMenu = ({
-  width,
   onNameInput,
   colorRef,
   throttledOnColorInput,
   gameStatusText,
 }) => {
   return (
-    <div
-      className="rounded-xl mx-auto bg-gray-100 h-40 my-5"
-      style={{
-        width,
-      }}
-    >
+    <div className="rounded-xl mx-auto bg-gray-100 h-40 my-5 w-full">
       <div className="mx-auto text-center py-5">
         <div
           className="mx-auto"

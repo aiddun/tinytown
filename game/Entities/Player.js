@@ -9,6 +9,8 @@ var MUTE_TEXTURE = PIXI.Texture.from("/mute.svg");
 export class Player extends PixiEntity {
   constructor(x, y, playerId, game, name = "", color = "0xff0000") {
     super(game, x, y);
+    this.isUser = false;
+
     this.nextX = x;
     this.nextY = y;
     this.boost = false;
@@ -93,7 +95,8 @@ export class Player extends PixiEntity {
     this.muteSprite.visible = this.muted;
   }
 
-  onClick() {
+  onClick(e) {
+    e.stopPropagation();
     this.mute();
   }
 
@@ -131,17 +134,17 @@ export class Player extends PixiEntity {
     // If not loaded
     if (!this.graphic || !this.nameText) return;
 
-    let V_S = 75;
+    let V_S = 65;
     const BOOST_FACTOR = 2;
 
     const xDiff = this.nextX - this.x;
     const yDiff = this.nextY - this.y;
 
-    // 3 seconds of walking time -> teleport
-    const MAX_WALK = 5 * V_S;
-    if (xDiff > MAX_WALK || xDiff > MAX_WALK) {
-      V_S = 1000;
-    }
+    // // 3 seconds of walking time -> teleport
+    // const MAX_WALK = 5 * V_S;
+    // if (xDiff > MAX_WALK || xDiff > MAX_WALK) {
+    //   V_S = 1000;
+    // }
 
     // How much to travel in time frame
     const delta_in_s = deltaMS / 1000;
@@ -152,9 +155,14 @@ export class Player extends PixiEntity {
 
     if (!first && xDiffAbs < 0.001 && yDiffAbs < 0.001) return;
 
+    // |_\
+    const angle = Math.atan(xDiffAbs / yDiffAbs);
+    const xDistFromVelocity = Math.sin(angle) * distFromVelocity;
+    const yDistFromVelocity = Math.cos(angle) * distFromVelocity;
+
     // If xDiffAbs or yDiffAbs is less than how far it will travel, travel by only that much
-    const travelDispX = Math.min(distFromVelocity, xDiffAbs);
-    const travelDispY = Math.min(distFromVelocity, yDiffAbs);
+    const travelDispX = Math.min(xDistFromVelocity, xDiffAbs);
+    const travelDispY = Math.min(yDistFromVelocity, yDiffAbs);
 
     const travelX = Math.sign(xDiff) * travelDispX;
     const travelY = Math.sign(yDiff) * travelDispY;
@@ -167,7 +175,7 @@ export class Player extends PixiEntity {
   }
 
   destructor() {
-    console.log(`destructing ${this.playerId}`)
+    console.log(`destructing ${this.playerId}`);
     super.destructor();
   }
 }
@@ -176,6 +184,7 @@ export class User extends Player {
   constructor(x, y, playerId, game, name = "", color = 0xff0000) {
     super(x, y, playerId, game, name, color);
     this.moved = false;
+    this.isUser = true;
   }
 
   updateAudio() {}

@@ -9,6 +9,8 @@ import { throttle } from "lodash";
 import Link from "next/link";
 
 import BottomMenu from "./BottomMenu";
+import RightSidebar from "./RightSidebar"
+import ErrorAlert from "./ErrorAlert"
 
 // Can be public
 // We generate token serverside
@@ -30,49 +32,15 @@ export const stringHash = (s) => {
   );
 };
 
-const ErrorAlert = ({ errorMsg }) => {
-  const router = useRouter();
-  const [animateLeave, setanimateLeave] = useState(false);
 
-  return (
-    <div className="absolute w-screen z-20">
-      <div
-        className="rounded-2xl bg-white	mx-auto mt-40 shadow-lg p-8"
-        style={{ width: "20rem", height: "15rem" }}
-      >
-        <p
-          className="text-3xl font-bold"
-          style={{
-            transition: "transform 2s ease-in",
-            transform: animateLeave ? "translate(100vw, -100vh)" : "unset",
-          }}
-        >
-          🛩️
-        </p>
-        <h1 className="text-3xl font-bold pt-4"> {errorMsg}</h1>
-        <br />
-        <AwesomeButton
-          type="primary"
-          className="pt-4"
-          style={{
-            // "margin-left": "0.25rem !important",
-            "--button-default-height": "100%",
-            "--button-default-border-radius": "1.5rem",
-            "--button-raise-level": "4px",
-            "--button-primary-border": "none",
-            height: "3rem",
-          }}
-          onPress={() => {
-            setanimateLeave(true);
-            setTimeout(() => router.push("/"), 500);
-          }}
-        >
-          <div className="align-middle text-xl">go back</div>
-        </AwesomeButton>
-      </div>
-    </div>
-  );
-};
+
+const CenterColumn = ({ children }) => (
+  <div className="grid grid-cols-7">
+    <div className="col-span-2"></div>
+    <div className="col-span-3">{children}</div>
+    <div className="col-span-2"></div>
+  </div>
+);
 
 export default class PixiGame extends Component {
   constructor(props) {
@@ -95,6 +63,7 @@ export default class PixiGame extends Component {
       colorInput: "",
       error: false,
       errorMsg: "town not found",
+      playerCount: 0,
     };
   }
 
@@ -120,22 +89,11 @@ export default class PixiGame extends Component {
       this.state,
       setGameState
     );
+
+    this.canvasRef.current.style.width = "100%";
+    this.canvasRef.current.style.height = "auto";
   }
 
-  // ontick(timeStamp) {
-  //   if (this.player && this.player.moved) {
-  //     this.player.moved = false;
-
-  //     // For some reason this is the fastest way to assign binary values in JS (at least v8). Microbenchmarked it.
-  //     this.movedInInterval = !0;
-
-  //     this.socket.emit("playerMovement", {
-  //       x: this.player.x,
-  //       y: this.player.y,
-  //       rotation: this.player.rotation,
-  //     });
-  //   }
-  // }
 
   onNameInput = (e) => {
     this.setState({ nameInput: e.target.value });
@@ -173,37 +131,40 @@ export default class PixiGame extends Component {
           <p>{this.state.disconnectedStatus}</p>
         ) : ( */}
         {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
-        <div
-          className="rounded-xl mx-auto bg-gray-100 h-16 my-5"
-          style={{ width: GAME_WIDTH }}
-        >
-          <div className="h-full flex justify-between items-center px-5">
-            <Link href="/">
-              <a>
-                <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
-              </a>
-            </Link>
-            <span className="leading-3 text-right">
-              code <h2 className="text-2xl font-semibold">{this.props.roomId}</h2>
-            </span>
+        <CenterColumn>
+          <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full">
+            <div className="h-full flex justify-between items-center px-5">
+              <Link href="/">
+                <a>
+                  <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
+                </a>
+              </Link>
+              <span className="leading-3 text-right">
+                code
+                <h2 className="text-2xl font-semibold" title={`${this.state.playerCount} players`}>{this.props.roomId}</h2>
+              </span>
+            </div>
           </div>
-        </div>
-        <div>
+        </CenterColumn>
+        <div className="grid lg:grid-cols-7">
+        <div className="col-span-2"></div>
           <canvas
-            className={`${styles.game} rounded-xl focus:outline-none mx-auto`}
+            className={`${styles.game} col-span-3 rounded-xl focus:outline-none`}
+            // width modification above
             ref={this.canvasRef}
             id="game"
             tabIndex="-1"
           ></canvas>
-          <div className="">foo</div>
+          <RightSidebar/>
         </div>
-        <BottomMenu
-          width={GAME_WIDTH}
-          gameStatusText={this.state.gameStatusText}
-          onNameInput={this.onNameInput}
-          colorRef={this.colorRef}
-          throttledOnColorInput={this.throttledOnColorInput}
-        />
+        <CenterColumn>
+          <BottomMenu
+            gameStatusText={this.state.gameStatusText}
+            onNameInput={this.onNameInput}
+            colorRef={this.colorRef}
+            throttledOnColorInput={this.throttledOnColorInput}
+          />
+        </CenterColumn>
       </div>
     );
   };
