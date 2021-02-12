@@ -5,7 +5,7 @@ const BottomMenu = ({
   gameStatusText,
 }) => {
   return (
-    <div className="rounded-xl mx-auto bg-gray-100 h-40 my-5 w-full">
+    <div className="rounded-xl mx-auto bg-gray-100 h-40 my-5 w-full shadow-sm ">
       <div className="mx-auto text-center py-5">
         <div
           className="mx-auto"

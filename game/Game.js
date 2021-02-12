@@ -3,6 +3,7 @@ import * as PIXI from "pixi.js";
 // import { throttleTime } from "rxjs/operators";
 import { Player, User } from "./Entities/Player";
 import geckos from "@geckos.io/client";
+import "./dblclick";
 
 export default class Game extends PIXI.Application {
   constructor(
@@ -23,6 +24,9 @@ export default class Game extends PIXI.Application {
       transparent: true,
       resolution: 2,
     });
+
+    this.width = width;
+    this.height = height;
 
     this.roomId = roomId;
     this.canvasRef = canvasRef;
@@ -92,12 +96,13 @@ export default class Game extends PIXI.Application {
     Object.entries(room).forEach(([id, playerData]) => {
       // Ignore player bc player is always right. Should anyways but just in case
       if (id === this.udpChannel.id) return;
-      const { x, y, name, color } = playerData;
+      const { x, y, name, color, background } = playerData;
       if (id in this.players) {
         const player = this.players[id];
         if (x && y) player.setTargetPosition(x, y);
         if (name) player.setName(name);
         if (color) player.setColor(color);
+        if (background) this.setGameComponentState({ background });
       }
     });
   };
@@ -119,10 +124,16 @@ export default class Game extends PIXI.Application {
     // TODO: Remove hack and find a better throttling fix
     // setInterval(() => this.keysdown.clear(), 100);
 
-    this.stage.click = (e) => {
+    const onTouch = (e) => {
+      if (e.data.button > 0) return;
       const point = e.data.global;
-      this.players.player.setTargetPosition(point.x, point.y);
+      const { player } = this.players;
+      player.setTargetPosition(point.x, point.y);
+      player.emitMovement();
     };
+
+    this.stage.on("dblclick", onTouch);
+    this.stage.on("tap", onTouch);
   };
 
   setupKeysDown = () => {

@@ -1,4 +1,4 @@
-// import { useRouter } from "next/router";
+import Head from "next/head";
 
 export async function getServerSideProps(context) {
   const res = await fetch(`http://localhost:8888/newtown`);
@@ -13,12 +13,16 @@ export async function getServerSideProps(context) {
   };
 }
 
-function NewTown({ children, href }) {
-  // const router = useRouter();
-
-  // router.push(href);
-
-  return <p>constructing town</p>;
+function NewTown() {
+  return (
+    <>
+      <Head>
+        <meta key="robots" name="robots" content="noindex, follow" />
+        <meta key="googlebot" name="googlebot" content="noindex, follow" />
+      </Head>
+      <p>constructing town</p>
+    </>
+  );
 }
 
 export default NewTown;

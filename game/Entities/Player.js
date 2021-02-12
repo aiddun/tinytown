@@ -22,6 +22,10 @@ export class Player extends PixiEntity {
     this.color = color;
     this.colorChanged = false;
 
+    const gameState = this.game.gameComponentState;
+    this.background = gameState.background;
+    this.backgroundChanged = false;
+
     this.muted = false;
     // this.audioTrack = null;
     // this.lastTimeStamp = null;
@@ -46,18 +50,24 @@ export class Player extends PixiEntity {
   }
 
   setPosition(x = this.x, y = this.y) {
-    this.x = x;
-    this.y = y;
+    this.x = Math.max(RADIUS, Math.min(x, this.game.width - RADIUS));
+    this.y = Math.max(RADIUS, Math.min(y, this.game.height - RADIUS));
   }
 
   setTargetPosition(x, y) {
-    this.nextX = x;
-    this.nextY = y;
+    this.nextX = Math.max(RADIUS, Math.min(x, this.game.width - RADIUS));
+    this.nextY = Math.max(RADIUS, Math.min(y, this.game.height - RADIUS));
   }
 
   setTargetDelta(x, y) {
-    this.nextX += x;
-    this.nextY += y;
+    this.nextX = Math.max(
+      RADIUS,
+      Math.min(this.nextX + x, this.game.width - RADIUS)
+    );
+    this.nextY = Math.max(
+      RADIUS,
+      Math.min(this.nextY + y, this.game.height - RADIUS)
+    );
   }
 
   setColor(color) {
@@ -72,6 +82,10 @@ export class Player extends PixiEntity {
   setName(name) {
     this.name = name;
     this.nameText.text = name;
+  }
+
+  setBackground(background) {
+    this.background = background;
   }
 
   getDistance(user) {
@@ -110,11 +124,13 @@ export class Player extends PixiEntity {
     this.graphic.endFill();
 
     // Interactivity
-    const hitArea = new PIXI.Circle(0, 0, RADIUS);
+    const hitArea = new PIXI.Circle(0, 0, RADIUS + 3);
     this.graphic.hitArea = hitArea;
     this.graphic.interactive = true;
     this.graphic.buttonMode = true;
-    this.graphic.click = this.onClick.bind(this);
+    const onClick = this.onClick.bind(this);
+    // Pointertap for click + touch
+    this.graphic.on("pointertap", onClick);
 
     // Scale mute button
     this.muteSprite.width = 2 * RADIUS * 0.7;
@@ -123,7 +139,7 @@ export class Player extends PixiEntity {
 
     this.nameText.interactive = true;
     this.nameText.buttonMode = true;
-    this.nameText.click = this.graphic.click;
+    this.nameText.on("pointertap", onClick);
     this.nameText.anchor.set(0.5, -0.6);
 
     this.container.x = this.x;
@@ -190,10 +206,13 @@ export class User extends Player {
   updateAudio() {}
 
   onTick() {
-    // Check for name on every tick, but only send every 10 or so
     const gameState = this.game.gameComponentState;
 
+    // Check for name change on every tick, but only send every 10 or so
+    // Same for other user-customizable attributes
+
     // Check if name changed
+    // TODO: Refactor
     const gameStateName = gameState.nameInput;
     if (this.name !== gameStateName) {
       this.setName(gameStateName);
@@ -201,11 +220,18 @@ export class User extends Player {
     }
 
     // Check if color changed
-    let colorChanged = false;
     const gameStateColor = gameState.colorInput;
     if (gameStateColor.length != 0 && this.color !== gameStateColor) {
       this.setColor(gameStateColor);
       this.colorChanged = true;
+    }
+
+    // Check if background changed
+    const gameStateBackground = gameState.background;
+    if (this.background !== gameStateBackground) {
+      debugger;
+      this.setBackground(gameStateBackground);
+      this.backgroundChanged = true;
     }
 
     const deltaMS = this.game.ticker.elapsedMS;
@@ -219,6 +245,10 @@ export class User extends Player {
     if (this.colorChanged) {
       this.emitColorChange();
       this.colorChanged = false;
+    }
+    if (this.backgroundChanged) {
+      this.emitBackgroundChange();
+      this.backgroundChanged = false;
     }
 
     // Move V_S units/s for .1 s
@@ -261,10 +291,18 @@ export class User extends Player {
   }
 
   emitMovement() {
-    this.game.udpChannel.emit("move", { player: { x: this.x, y: this.y } });
+    this.game.udpChannel.emit("move", {
+      player: { x: this.nextX, y: this.nextY },
+    });
   }
 
   emitColorChange() {
     this.game.udpChannel.emit("colorChange", { player: { color: this.color } });
+  }
+
+  emitBackgroundChange() {
+    this.game.udpChannel.emit("backgroundChange", {
+      background: this.background,
+    });
   }
 }

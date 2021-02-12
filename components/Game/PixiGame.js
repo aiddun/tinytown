@@ -9,8 +9,8 @@ import { throttle } from "lodash";
 import Link from "next/link";
 
 import BottomMenu from "./BottomMenu";
-import RightSidebar from "./RightSidebar"
-import ErrorAlert from "./ErrorAlert"
+import RightSidebar from "./RightSidebar";
+import ErrorAlert from "./ErrorAlert";
 
 // Can be public
 // We generate token serverside
@@ -32,10 +32,14 @@ export const stringHash = (s) => {
   );
 };
 
-
+const images = {
+  town: "/img/backgrounds/town.jpg",
+  office: "/img/backgrounds/office.png",
+  colors: "/img/backgrounds/town.jpg",
+};
 
 const CenterColumn = ({ children }) => (
-  <div className="grid grid-cols-7">
+  <div className="grid xl:grid-cols-7">
     <div className="col-span-2"></div>
     <div className="col-span-3">{children}</div>
     <div className="col-span-2"></div>
@@ -64,6 +68,7 @@ export default class PixiGame extends Component {
       error: false,
       errorMsg: "town not found",
       playerCount: 0,
+      background: "town",
     };
   }
 
@@ -93,7 +98,6 @@ export default class PixiGame extends Component {
     this.canvasRef.current.style.width = "100%";
     this.canvasRef.current.style.height = "auto";
   }
-
 
   onNameInput = (e) => {
     this.setState({ nameInput: e.target.value });
@@ -132,7 +136,7 @@ export default class PixiGame extends Component {
         ) : ( */}
         {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
         <CenterColumn>
-          <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full">
+          <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full shadow-sm ">
             <div className="h-full flex justify-between items-center px-5">
               <Link href="/">
                 <a>
@@ -141,21 +145,32 @@ export default class PixiGame extends Component {
               </Link>
               <span className="leading-3 text-right">
                 code
-                <h2 className="text-2xl font-semibold" title={`${this.state.playerCount} players`}>{this.props.roomId}</h2>
+                <h2
+                  className="text-2xl font-semibold"
+                  title={`${this.state.playerCount} players`}
+                >
+                  {this.props.roomId}
+                </h2>
               </span>
             </div>
           </div>
         </CenterColumn>
-        <div className="grid lg:grid-cols-7">
-        <div className="col-span-2"></div>
+        <div className="grid lg:grid-cols-7 relative">
+          <div className="col-span-2"></div>
           <canvas
-            className={`${styles.game} col-span-3 rounded-xl focus:outline-none`}
+            className={`col-span-3 rounded-xl bg-contain shadow-md focus:outline-none`}
             // width modification above
             ref={this.canvasRef}
             id="game"
             tabIndex="-1"
+            style={{ backgroundImage: `url(${images[this.state.background]})` }}
           ></canvas>
-          <RightSidebar/>
+          <RightSidebar
+            setBackground={(bg) => this.setState({ background: bg })}
+            background={this.state.background}
+            backgrounds={images}
+            className="col-span-2"
+          />
         </div>
         <CenterColumn>
           <BottomMenu

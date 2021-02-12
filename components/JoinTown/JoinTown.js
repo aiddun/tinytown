@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/router";
 import { AwesomeButton } from "react-awesome-button";
+import Cloud from "./Cloud";
 
 const CreateRoomButton = ({ setloggedin, setTravelSuccess }) => {
   const router = useRouter();
@@ -93,42 +94,64 @@ const RoomCodeInput = ({ correcttowncode, setTravelSuccess, seterror }) => {
   );
 };
 
-const JoinTown = ({ setloggedin }) => {
+// Extra component to avoid rerender on button press
+const Clouds = () => (
+  <>
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+    <Cloud />
+  </>
+);
+
+const JoinTown = () => {
   const [error, seterror] = useState("");
   const [travelSuccess, setTravelSuccess] = useState(false);
+  const [loggedIn, setloggedin] = useState(false);
 
   return (
-    <div className="absolute w-screen z-20">
-      <div
-        className="rounded-3xl bg-green-400	mx-auto mt-20 "
-        style={{ width: "50rem", height: "35rem" }}
-      >
-        <div className="grid grid-rows-4 h-full py-10">
-          <div>
-            <h1 className="text-center text-4xl text-white pt-5 font-bold	">
-              tiny town 🏘️
-            </h1>
-          </div>
-          <div className="grid grid-cols-3 h-full row-span-3 px-24 gap-10">
-            <CreateRoomButton
-              setloggedin={setloggedin}
-              setTravelSuccess={setTravelSuccess}
-            />
-            <div className="w-full h-full bg-white rounded-3xl mx-auto text-center col-span-2 flex">
-              <div className="m-auto">
-                <p className="text-xl font-medium">enter town code</p>
-                <RoomCodeInput
-                  correcttowncode={travelSuccess}
-                  setTravelSuccess={setTravelSuccess}
-                  seterror={seterror}
-                  setloggedin={setloggedin}
-                />
-                {/* Room error code */}
-                <p className="text-red-700">{error}</p>
+    <div className="">
+      <div className="absolute w-screen z-20">
+        <div
+          className="rounded-3xl bg-green-400	mx-auto mt-20 shadow-sm"
+          style={{ width: "50rem", height: "35rem" }}
+        >
+          <div className="grid grid-rows-4 h-full py-10">
+            <div>
+              <h1 className="text-center text-4xl text-white pt-5 font-bold	">
+                tiny town 🏘️
+              </h1>
+            </div>
+            <div className="grid grid-cols-3 h-full row-span-3 px-24 gap-10">
+              <CreateRoomButton
+                setloggedin={setloggedin}
+                setTravelSuccess={setTravelSuccess}
+              />
+              <div className="w-full h-full bg-white rounded-3xl mx-auto text-center col-span-2 flex">
+                <div className="m-auto">
+                  <p className="text-xl font-medium">enter town code</p>
+                  <RoomCodeInput
+                    correcttowncode={travelSuccess}
+                    setTravelSuccess={setTravelSuccess}
+                    seterror={seterror}
+                    setloggedin={setloggedin}
+                  />
+                  {/* Room error code */}
+                  <p className="text-red-700">{error}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
+      <div className="w-screen h-screen bg-blue-500 overflow-hidden">
+        <Clouds />
       </div>
     </div>
   );

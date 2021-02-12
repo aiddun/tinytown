@@ -130,6 +130,20 @@ io.onConnection((channel) => {
       }
     }
   });
+
+  channel.on("backgroundChange", ({ background }) => {
+    if (typeof background === "string" || background instanceof String) {
+      const room = rooms[channel.roomId];
+      room.background = background;
+
+      // broadcast to all in same room
+      channel.broadcast.emit(
+        "data",
+        { [channel.id]: { background } },
+        { reliable: true }
+      );
+    }
+  });
 });
 
 const getRandomLetter = () => {

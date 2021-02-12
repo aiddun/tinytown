@@ -1,20 +1,21 @@
 high:
 implement full mute
 network errors
-ui
 https://codepen.io/Mark_Bowley/pen/xEbuI
 
 med:
-netcode optimization
-critical over tcp websockets
-go back if player gets too far (ex. 3 seconds away)
 timestamping for OOO packets
 disconnect/reconnecting prompt
 sync websocket disconnect with udp (websocket instant)
 idle -> kick
 captcha
 
+// not release
 low:
+custom image
+draw office
+critical over tcp websockets
+netcode optimization
 add video
 customization
 add movement onkeydown before throttle

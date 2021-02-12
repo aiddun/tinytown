@@ -3,7 +3,7 @@ import { useUser } from "../components/UserContext";
 import { supabase } from "../utils/initSupabase";
 import SupabaseAuth from "../components/SupabaseAuth";
 import { useState } from "react";
-import JoinTown from "../components/JoinTown";
+import JoinTown from "../components/JoinTown/JoinTown";
 // import OldGame from "../components/Game/OldGame";
 
 const fetcher = (url, token) =>
@@ -12,7 +12,6 @@ const fetcher = (url, token) =>
     headers: new Headers({ "Content-Type": "application/json", token }),
     credentials: "same-origin",
   }).then((res) => res.json());
-
 
 const Index = () => {
   // const { user, session } = useUser();
@@ -32,14 +31,10 @@ const Index = () => {
   //   );
   // }
 
-  const [loggedIn, setloggedin] = useState(false);
-
   return (
-    <div>
-      <p>test</p>
-      {!loggedIn && <JoinTown setloggedin={setloggedin} />}
- 
-      {/* <p
+    <JoinTown />
+
+    /* <p
         style={{
           display: "inline-block",
           color: "blue",
@@ -61,8 +56,7 @@ const Index = () => {
         </div>
       ) : (
         <div>Loading...</div>
-      )} */}
-    </div>
+      )} */
   );
 };
 

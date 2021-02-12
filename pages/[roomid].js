@@ -1,5 +1,6 @@
 import { useRouter } from "next/router";
 import dynamic from "next/dynamic";
+import Head from "next/head";
 
 // Game component has to be dynamic
 const PixiGameNoSSR = dynamic(() => import("../components/Game/PixiGame"), {
@@ -11,10 +12,15 @@ const Game = () => {
   const { roomId } = router.query;
 
   return (
-    //   <div style={{ filter: loggedIn ? "none" : "blur(4px)" }}>
-    // {/* <Game></Game> */}
-    <PixiGameNoSSR roomId={roomId} />
-    //   </div>
+    <>
+      <Head>
+        <meta key="robots" name="robots" content="noindex, follow" />
+        <meta key="googlebot" name="googlebot" content="noindex, follow" />
+      </Head>
+      <div>
+        <PixiGameNoSSR roomId={roomId} />
+      </div>
+    </>
   );
 };
 export default Game;
