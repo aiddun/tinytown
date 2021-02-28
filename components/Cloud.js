@@ -11,7 +11,7 @@ function getRandomArbitrary(min, max) {
 
 class Cloud extends React.Component {
   constructor(props) {
-    super(props)
+    super(props);
     const speed = 35;
     this.state = {
       speed,
@@ -29,7 +29,7 @@ class Cloud extends React.Component {
         className={cloudStyle}
         style={{
           animation: `animateCloud ${speed}s linear infinite`,
-          transform: `scale(${scale})`,
+          transform: `scale(calc(${scale} * var(--cloud-scale-factor)))`,
           // Use % so will never go too far off page
           top: `${top}%`,
           animationDelay: `-${left}s`,

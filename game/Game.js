@@ -4,6 +4,11 @@ import * as PIXI from "pixi.js";
 import { Player, User } from "./Entities/Player";
 import geckos from "@geckos.io/client";
 import "./dblclick";
+import AgoraRTC from "agora-rtc-sdk-ng";
+
+// Can be public
+// We generate token serverside
+var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
 
 export default class Game extends PIXI.Application {
   constructor(
@@ -42,37 +47,71 @@ export default class Game extends PIXI.Application {
     this.stage.interactive = true;
     this.stage.hitArea = new PIXI.Rectangle(0, 0, width, height);
 
-    this.udpChannel.onConnect((error) => {
-      if (error) {
-        console.log("err");
-        console.error(error.message);
-        return;
-      }
+    this.agoraClient = null;
 
-      this.udpChannel.on("setup", (data) => this.setup(data));
-      this.udpChannel.on("data", this.ondata);
-      this.udpChannel.on("newPlayer", ({ id, player }) => {
-        const { x, y, name, color } = player;
-        this.players[id] = new Player(x, y, id, this, name, color);
-        this.setGameComponentState({
-          playerCount: Object.keys(this.players).length,
-        });
-      });
-      this.udpChannel.emit("joinRoom", { room: this.roomId });
-      this.udpChannel.on("userDisconnect", ({ id }) => {
-        if (id in this.players) {
-          this.players[id].destroy();
-          delete this.players[id];
+    this.udpChannel
+      .onConnect((error) => {
+        if (error) {
+          this.setGameComponentState({ error: true, errorMsg: "town not found" });
+          return;
         }
-        this.setGameComponentState({
-          playerCount: Object.keys(this.players).length,
+
+        this.udpChannel.on("setup", (data) => this.setup(data));
+        this.udpChannel.on("data", this.ondata);
+        this.udpChannel.on("newPlayer", ({ id, player }) => {
+          const { x, y, name, color } = player;
+          this.players[id] = new Player(x, y, id, this, name, color);
+          this.setGameComponentState({
+            playerCount: Object.keys(this.players).length,
+          });
+        });
+        this.udpChannel.emit("joinRoom", { room: this.roomId });
+        this.udpChannel.on("userDisconnect", ({ id }) => {
+          if (id in this.players) {
+            this.players[id].destroy();
+            delete this.players[id];
+          }
+          this.setGameComponentState({
+            playerCount: Object.keys(this.players).length,
+          });
+        });
+
+        this.udpChannel.onDisconnect(() =>
+          setGameComponentState({
+            error: true,
+            errorMsg: "something went wrong",
+          })
+        );
+      })
+      .catch((e) => {
+        this.exitGame();
+        setGameComponentState({
+          error: true,
+          errorMsg: "something went wrong",
         });
       });
-    });
+
+    // setTimeoutWorker
+
+    setInterval(() => {
+      // TODO: Also add dialogue timeout
+      if (
+        this.players.player &&
+        this.players.player.lastMoved &&
+        // if idle for > 20 mins, kick
+        new Date() - this.players.player.lastMoved > 1000 * 60 * 10
+      ) {
+        this.exitGame();
+        this.setGameComponentState({
+          error: true,
+          errorMsg: "you have been kicked due to inactivity",
+        });
+      }
+    }, 1000 * 60);
   }
 
   setup = (data) => {
-    const { players, error } = data;
+    const { players, token, error } = data;
     if (error) {
       alert("Error: room does not exist");
       return;
@@ -89,7 +128,65 @@ export default class Game extends PIXI.Application {
     this.setGameComponentState({
       playerCount: Object.keys(this.players).length,
     });
+    this.setupAudio(this.roomId, token);
   };
+
+  async setupAudio(roomId, token) {
+    this.agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "h264" });
+    const appid = AGORA_APPID;
+    const uid = await this.agoraClient.join(
+      appid,
+      roomId,
+      token,
+      this.udpChannel.id
+    );
+
+    this.agoraClient.on("user-published", async (user, mediaType) => {
+      // Subscribe to a remote user.
+      await this.agoraClient.subscribe(user, mediaType);
+      console.log("subscribe success");
+
+      // If the subscribed track is audio.
+      if (mediaType === "audio") {
+        // Get `RemoteAudioTrack` in the `user` object.
+        const remoteAudioTrack = user.audioTrack;
+        // Play the audio track. No need to pass any DOM element.
+        remoteAudioTrack.play();
+
+        const { uid } = user;
+        this.players[uid].agoraAudioTrack = remoteAudioTrack;
+      } else {
+        console.error("error: unsupported media track");
+      }
+    });
+
+    const localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack({
+      // AEC: true,
+      // AGC: true,
+      // ANS: true,
+      encoderConfig: "speech_standard",
+    });
+
+    this.players.player.agoraAudioTrack = localAudioTrack;
+
+    // Publish the local audio to the channel.
+    await this.agoraClient.publish([localAudioTrack]);
+
+    console.log("audio publish success!");
+    this.setGameComponentState({ audioConnected: true });
+
+    this.agoraClient.on("user-unpublished", (user) => {});
+  }
+
+  async stopAudio() {
+    // Stop mic
+    this.players.player.localAudioTrack.close();
+    // Leave the channel.
+    await this.client.leave();
+
+    const audioStatus = document.getElementById("audiostatus");
+    audioStatus.innerHTML = "audio disconnected";
+  }
 
   ondata = (data) => {
     const room = data;
@@ -129,7 +226,7 @@ export default class Game extends PIXI.Application {
       const point = e.data.global;
       const { player } = this.players;
       player.setTargetPosition(point.x, point.y);
-      player.emitMovement();
+      player.emitMovement(true);
     };
 
     this.stage.on("dblclick", onTouch);
@@ -138,9 +235,14 @@ export default class Game extends PIXI.Application {
 
   setupKeysDown = () => {
     // Keydown event
-    this.canvasRef.current.addEventListener("keydown", ({ key }) =>
-      this.keysdown.add(key.toLowerCase())
-    );
+    console.log(this.canvasRef);
+    this.canvasRef.current.addEventListener("keydown", ({ key }) => {
+      key = key.toLowerCase();
+      this.keysdown.add(key);
+      if (key === "m") {
+        this.players.player.mute();
+      }
+    });
     // always listen for keyup
     this.canvasRef.current.addEventListener("keyup", ({ key }) =>
       this.keysdown.delete(key.toLowerCase())
@@ -157,4 +259,11 @@ export default class Game extends PIXI.Application {
   };
 
   onTick = () => {};
+
+  exitGame = () => {
+    this.udpChannel.close();
+    Object.values(this.players).forEach(
+      (p) => p.agoraAudioTrack && p.agoraAudioTrack.stop()
+    );
+  };
 }

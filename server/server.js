@@ -11,15 +11,14 @@ const { RtcTokenBuilder, AgoraRole } = require("./agoraTokenGen.js");
 var GAME_HEIGHT = 750;
 var GAME_WIDTH = 1000;
 
-const genToken = (playerId) => {
-  return "peepeepoopoo";
+const genToken = (playerId, roomId) => {
   const token = RtcTokenBuilder.buildTokenWithAccount(
     process.env.AGORA_APPID,
     process.env.AGORA_CERT,
-    room_id.toString(),
+    roomId,
     playerId,
     AgoraRole.PUBLISHER,
-    Math.round(new Date().getTime() / 1000) + 24 * 60 * 60
+    Math.round(new Date().getTime() / 1000) + 4 * 60 * 60
   );
 
   return token;
@@ -43,13 +42,20 @@ io.listen(); // default port is 9208
 io.onConnection((channel) => {
   channel.onDisconnect(() => {
     const room = rooms[channel.roomId];
-    const { players } = room;
-    delete players[channel.id];
+    // TODO: if statement is HACK, remove
+    if (room) {
+      const { players } = room;
+      delete players[channel.id];
 
-    // TODO: Add room gc
+      // TODO: Add room gc
 
-    console.log(`${channel.id} got disconnected`);
-    channel.room.emit("userDisconnect", { id: channel.id }, { reliable: true });
+      console.log(`${channel.id} got disconnected`);
+      channel.room.emit(
+        "userDisconnect",
+        { id: channel.id },
+        { reliable: true }
+      );
+    }
   });
 
   channel.on("joinRoom", ({ room, name = "", color }) => {
@@ -61,7 +67,7 @@ io.onConnection((channel) => {
       }
 
       channel.join(room);
-      const newPlayer = { x: 50, y: 50, name, color };
+      const newPlayer = { x: 50 + getRandomInt(50), y: 50 + getRandomInt(50), name, color };
 
       // TODO: Change to a data diff call in the future
       // TODO: Change to TCP
@@ -71,7 +77,7 @@ io.onConnection((channel) => {
       rooms[room].players[channel.id] = newPlayer;
       channel.emit(
         "setup",
-        { players: rooms[room].players, token: genToken(channel.id) },
+        { players: rooms[room].players, token: genToken(channel.id, room) },
         { reliable: true }
       );
 

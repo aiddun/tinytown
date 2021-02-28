@@ -4,7 +4,7 @@ import { stringHash, PLAYER_SPEED } from "../../components/Game/PixiGame";
 import * as PIXI from "pixi.js";
 
 var RADIUS = 15;
-var MUTE_TEXTURE = PIXI.Texture.from("/mute.svg");
+var MUTE_TEXTURE = PIXI.Texture.from("/img/mute.svg");
 
 export class Player extends PixiEntity {
   constructor(x, y, playerId, game, name = "", color = "0xff0000") {
@@ -27,17 +27,18 @@ export class Player extends PixiEntity {
     this.backgroundChanged = false;
 
     this.muted = false;
-    // this.audioTrack = null;
+    this.agoraAudioTrack = null;
+
     // this.lastTimeStamp = null;
     this.graphic = new PIXI.Graphics();
     this.nameText = new PIXI.Text(this.name, {
       fontFamily: "Arial",
-      fontSize: 16,
+      fontSize: 18,
       fill: "black",
       align: "center",
       lineJoin: "bevel",
-      stroke: "white",
-      strokeThickness: 2,
+      stroke: 0xf3f4f6,
+      strokeThickness: 4,
     });
     this.muteSprite = new PIXI.Sprite(MUTE_TEXTURE);
     // Initially invisible
@@ -45,6 +46,9 @@ export class Player extends PixiEntity {
 
     this.container.addChild(this.graphic, this.nameText, this.muteSprite);
     this.msCount = 0;
+
+    // Last moved time
+    this.lastMoved = new Date();
 
     this.firstdraw();
   }
@@ -94,24 +98,17 @@ export class Player extends PixiEntity {
 
   ontick() {}
 
-  updateAudio(user) {
-    if (this.audioTrack) {
-      let dist = this.getDistance(user);
+  updateVolumeFromDist(dist) {
+    if (this.agoraAudioTrack) {
       dist = dist > 200 ? 200 : dist;
       const vol = 200 - dist;
-      this.audioTrack.setVolume(vol);
+      const { isPlaying } = this.agoraAudioTrack;
+      if (dist > 300 && isPlaying) this.agoraAudioTrack.stop();
+      else if (isPlaying) {
+        this.agoraAudioTrack.setVolume(vol);
+        this.agoraAudioTrack.play();
+      } else this.agoraAudioTrack.setVolume(vol);
     }
-  }
-
-  mute() {
-    // Invert muted
-    this.muted ^= 1;
-    this.muteSprite.visible = this.muted;
-  }
-
-  onClick(e) {
-    e.stopPropagation();
-    this.mute();
   }
 
   firstdraw() {
@@ -122,25 +119,6 @@ export class Player extends PixiEntity {
     this.graphic.beginFill(PIXI.utils.string2hex(this.color));
     this.graphic.drawCircle(0, 0, RADIUS); // drawCircle(x, y, radius)
     this.graphic.endFill();
-
-    // Interactivity
-    const hitArea = new PIXI.Circle(0, 0, RADIUS + 3);
-    this.graphic.hitArea = hitArea;
-    this.graphic.interactive = true;
-    this.graphic.buttonMode = true;
-    const onClick = this.onClick.bind(this);
-    // Pointertap for click + touch
-    this.graphic.on("pointertap", onClick);
-
-    // Scale mute button
-    this.muteSprite.width = 2 * RADIUS * 0.7;
-    this.muteSprite.height = 2 * RADIUS * 0.7;
-    this.muteSprite.anchor.set(0.5, 0.5);
-
-    this.nameText.interactive = true;
-    this.nameText.buttonMode = true;
-    this.nameText.on("pointertap", onClick);
-    this.nameText.anchor.set(0.5, -0.6);
 
     this.container.x = this.x;
     this.container.y = this.y;
@@ -190,6 +168,25 @@ export class Player extends PixiEntity {
     this.container.y = this.y;
   }
 
+  setMuteSprite(level) {
+    switch (level) {
+      case 0: {
+        this.muteSprite.visible = false;
+        break;
+      }
+      case 1: {
+        this.muteSprite.alpha = 0.2;
+        this.muteSprite.visible = true;
+        break;
+      }
+      default: {
+        this.muteSprite.alpha = 1;
+        this.muteSprite.visible = true;
+        break;
+      }
+    }
+  }
+
   destructor() {
     console.log(`destructing ${this.playerId}`);
     super.destructor();
@@ -201,6 +198,37 @@ export class User extends Player {
     super(x, y, playerId, game, name, color);
     this.moved = false;
     this.isUser = true;
+    this.tapMove = false;
+
+    // Interactivity
+    const hitArea = new PIXI.Circle(0, 0, RADIUS + 3);
+    this.graphic.hitArea = hitArea;
+    this.graphic.interactive = true;
+    this.graphic.buttonMode = true;
+
+    const mouseOver = this.mouseOver.bind(this);
+    this.graphic.on("mouseover", mouseOver);
+    const mouseOut = this.mouseOut.bind(this);
+    this.graphic.on("mouseout", mouseOut);
+
+    const onClick = this.onClick.bind(this);
+    // Pointertap for click + touch
+    this.graphic.on("pointertap", onClick);
+
+    // if dblclick on player, do nothing unusual
+    this.graphic.on("dblclick", (e) => {
+      e.stopPropagation();
+    });
+
+    // Scale mute button
+    this.muteSprite.width = 2 * RADIUS * 0.7;
+    this.muteSprite.height = 2 * RADIUS * 0.7;
+    this.muteSprite.anchor.set(0.5, 0.5);
+
+    this.nameText.interactive = true;
+    this.nameText.buttonMode = true;
+    this.nameText.on("pointertap", onClick);
+    this.nameText.anchor.set(0.5, -0.5);
   }
 
   updateAudio() {}
@@ -229,9 +257,22 @@ export class User extends Player {
     // Check if background changed
     const gameStateBackground = gameState.background;
     if (this.background !== gameStateBackground) {
-      debugger;
       this.setBackground(gameStateBackground);
       this.backgroundChanged = true;
+    }
+
+    // check if mute changed
+    // Check if background changed
+    const gameStateMute = gameState.muted;
+    if (this.muted !== gameStateMute) {
+      // todo - add mute indicator serverside
+      if (gameStateMute) {
+        this.mute();
+        this.setMuteSprite(2);
+      } else {
+        this.unmute();
+        this.setMuteSprite(0);
+      }
     }
 
     const deltaMS = this.game.ticker.elapsedMS;
@@ -262,23 +303,41 @@ export class User extends Player {
     let boost = false;
 
     this.game.keysdown.forEach((key) => {
-      if (key === "w") dy -= dist;
-      else if (key === "a") dx -= dist;
-      else if (key === "s") dy += dist;
-      else if (key === "d") dx += dist;
+      if (key === "w" || key === "arrowup") dy -= dist;
+      else if (key === "a" || key === "arrowleft") dx -= dist;
+      else if (key === "s" || key === "arrowdown") dy += dist;
+      else if (key === "d" || key === "arrowright") dx += dist;
       else if (key === "shift") boost = true;
     });
 
-    this.game.players.player.boost = boost;
+    if (dx && dy) {
+      dx *= Math.sqrt(1 / 2);
+      dy *= Math.sqrt(1 / 2);
+    }
+
+    this.boost = boost;
     // Mini optimization but do a single branch rather than mult
     // if (boost)
     //   this.players.player.setTargetDelta(dx * BOOST_FACTOR, dy * BOOST_FACTOR);
     // else
-    this.game.players.player.setTargetDelta(dx, dy);
+    // this.setTargetDelta(dx, dy);
+    if (dx || dy) this.setTargetPosition(this.x + dx, this.y + dy);
     this.msCount = 0;
 
     if (dx || dy) {
       this.emitMovement();
+    }
+
+    Object.entries(this.game.players)
+      // Don't include current player
+      .filter(([_, player]) => player != this)
+      .forEach(([id, player]) => {
+        const dist = this.getDistance(player);
+        player.updateVolumeFromDist(dist);
+      }, this);
+
+    if (this.agoraAudioTrack) {
+      console.log(this.agoraAudioTrack.getVolumeLevel());
     }
   }
 
@@ -290,10 +349,15 @@ export class User extends Player {
     );
   }
 
-  emitMovement() {
-    this.game.udpChannel.emit("move", {
-      player: { x: this.nextX, y: this.nextY },
-    });
+  emitMovement(reliable = true) {
+    this.lastMoved = new Date();
+    this.game.udpChannel.emit(
+      "move",
+      {
+        player: { x: this.nextX, y: this.nextY },
+      },
+      { reliable }
+    );
   }
 
   emitColorChange() {
@@ -304,5 +368,42 @@ export class User extends Player {
     this.game.udpChannel.emit("backgroundChange", {
       background: this.background,
     });
+  }
+
+  mute() {
+    // Invert muted
+    this.muted = true;
+    this.setMuteSprite(2);
+    this.agoraAudioTrack && this.agoraAudioTrack.stop();
+  }
+
+  unmute() {
+    // Invert muted
+    this.muted = false;
+    this.setMuteSprite(0);
+    this.agoraAudioTrack && this.agoraAudioTrack.play();
+  }
+
+  mouseOver(e) {
+    e.stopPropagation();
+    this.setMuteSprite(1);
+  }
+
+  mouseOut(e) {
+    e.stopPropagation();
+    this.setMuteSprite(this.muted ? 2 : 0);
+  }
+
+  onClick(e) {
+    e.stopPropagation();
+    if (!this.muted) {
+      this.setMuteSprite(2);
+      this.mute();
+      this.game.setGameComponentState({ muted: true });
+    } else {
+      this.setMuteSprite(0);
+      this.unmute();
+      this.game.setGameComponentState({ muted: false });
+    }
   }
 }

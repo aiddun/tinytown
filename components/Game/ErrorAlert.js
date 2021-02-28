@@ -1,3 +1,8 @@
+import { useRouter } from "next/router";
+import { useState } from "react";
+import { AwesomeButton } from "react-awesome-button";
+
+
 const ErrorAlert = ({ errorMsg }) => {
   const router = useRouter();
   const [animateLeave, setanimateLeave] = useState(false);
@@ -6,13 +11,13 @@ const ErrorAlert = ({ errorMsg }) => {
     <div className="absolute w-screen z-20">
       <div
         className="rounded-2xl bg-white	mx-auto mt-40 shadow-lg p-8"
-        style={{ width: "20rem", height: "15rem" }}
+        style={{ width: "20rem" }}
       >
         <p
           className="text-3xl font-bold"
           style={{
-            transition: "transform 2s ease-in",
-            transform: animateLeave ? "translate(100vw, -100vh)" : "unset",
+            transition: "transform .3s ease-in",
+            transform: animateLeave ? "translate(10vw, 0)" : "unset",
           }}
         >
           🛩️

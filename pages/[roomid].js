@@ -14,10 +14,19 @@ const Game = () => {
   return (
     <>
       <Head>
-        <meta key="robots" name="robots" content="noindex, follow" />
-        <meta key="googlebot" name="googlebot" content="noindex, follow" />
+        <meta key="robots" name="robots" content="noindex, nofollow" />
+        <meta key="googlebot" name="googlebot" content="noindex, nofollow" />
       </Head>
-      <div>
+      <style global jsx>{`
+        html,
+        body,
+        body > div:first-child,
+        div#__next,
+        div#__next > div {
+          height: 100%;
+        }
+      `}</style>
+      <div className="w-full h-full">
         <PixiGameNoSSR roomId={roomId} />
       </div>
     </>

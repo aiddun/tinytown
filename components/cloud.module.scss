@@ -60,4 +60,16 @@
     top: -90px;
   }
 
+  @media only screen and (min-width: 768px) {
+    --cloud-scale-factor: 1;
+  }
+
+  @media only screen and (max-width: 768px) {
+    --cloud-scale-factor: 0.75;
+  }
+
+  /*Mobile Query*/
+  @media only screen and (max-width: 480px) {
+    --cloud-scale-factor: 0.5;
+  }
 }

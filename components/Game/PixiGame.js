@@ -1,16 +1,13 @@
-// import AgoraRTC from "agora-rtc-sdk-ng";
-import { createRef, useState } from "react";
-import React, { Component } from "react";
-import styles from "./game.module.scss";
-import Game from "../../game/Game";
-import { AwesomeButton } from "react-awesome-button";
-import { useRouter } from "next/router";
+import copy from "copy-to-clipboard";
 import { throttle } from "lodash";
 import Link from "next/link";
-
+import React, { Component, createRef, useState, useEffect } from "react";
+import Game from "../../game/Game";
+import Cloud from "../Cloud";
 import BottomMenu from "./BottomMenu";
-import RightSidebar from "./RightSidebar";
 import ErrorAlert from "./ErrorAlert";
+import styles from "./game.module.scss";
+import RightSidebar from "./RightSidebar";
 
 // Can be public
 // We generate token serverside
@@ -23,28 +20,76 @@ var GAME_HEIGHT = 750;
 var GAME_WIDTH = 1000;
 
 // TODO: Replace with something better
-export const stringHash = (s) => {
-  return (
-    s
-      .split("")
-      .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * 31 ** index, 0) %
-    2 ** 64
-  );
-};
+export const stringHash = (s) =>
+  s
+    .split("")
+    .reduce((acc, curr, index) => acc + curr.charCodeAt(0) * 31 ** index, 0) %
+  2 ** 64;
 
 const images = {
+  // waterfront: "/img/backgrounds/waterfront.jpg",
   town: "/img/backgrounds/town.jpg",
-  office: "/img/backgrounds/office.png",
-  colors: "/img/backgrounds/town.jpg",
+  office: "/img/backgrounds/office.jpg",
+  lounge: "/img/backgrounds/lounge.jpg",
+  apt: "/img/backgrounds/apt.png",
 };
 
 const CenterColumn = ({ children }) => (
-  <div className="grid xl:grid-cols-7">
+  <div className="grid md:grid-cols-9 px-5 md:px-0">
     <div className="col-span-2"></div>
-    <div className="col-span-3">{children}</div>
+    <div className="col-span-5">{children}</div>
     <div className="col-span-2"></div>
   </div>
 );
+
+const Clouds = () => (
+  <>
+    <Cloud />
+    <Cloud />
+  </>
+);
+
+const Header = ({ playerCount, roomId, disabled }) => {
+  const [copied, setcopied] = useState(false);
+  const [copiedtimer, setcopiedtimer] = useState(null);
+
+  useEffect(() => {
+    if (copiedtimer) clearTimeout(copiedtimer);
+    setcopiedtimer(setTimeout(() => setcopied(false), 500));
+  }, [copied]);
+
+  return (
+    <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full shadow-sm ">
+      <div className="h-full flex justify-between items-center px-5">
+        <Link href="/">
+          <a>
+            <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
+          </a>
+        </Link>
+        <div className={`inline-flex ${disabled && "hidden"}`}>
+          <button
+            onClick={(e) => {
+              const copyText = window.location.href;
+              copy(copyText);
+              setcopied(true);
+            }}
+            className="focus:outline-none"
+          >
+            <span className="leading-3 text-right">
+              {copied ? "copied" : "code"}
+              <h2
+                className="text-2xl font-semibold"
+                title={`${playerCount} players`}
+              >
+                {roomId}
+              </h2>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default class PixiGame extends Component {
   constructor(props) {
@@ -69,6 +114,7 @@ export default class PixiGame extends Component {
       errorMsg: "town not found",
       playerCount: 0,
       background: "town",
+      muted: false,
     };
   }
 
@@ -130,57 +176,59 @@ export default class PixiGame extends Component {
     else if (!gameConnected && !audioConnected) gameStatusText = "connecting";
 
     return (
-      <div style={{ backdropFilter: this.state.error ? "blur(2px)" : "unset" }}>
-        {/* {this.state.disconnected ? (
+      <>
+        {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
+        <div
+          style={{ backdropFilter: this.state.error ? "blur(2px)" : "unset" }}
+          className="w-full h-full absolute"
+        >
+          {/* {this.state.disconnected ? (
           <p>{this.state.disconnectedStatus}</p>
         ) : ( */}
-        {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
-        <CenterColumn>
-          <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full shadow-sm ">
-            <div className="h-full flex justify-between items-center px-5">
-              <Link href="/">
-                <a>
-                  <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
-                </a>
-              </Link>
-              <span className="leading-3 text-right">
-                code
-                <h2
-                  className="text-2xl font-semibold"
-                  title={`${this.state.playerCount} players`}
-                >
-                  {this.props.roomId}
-                </h2>
-              </span>
-            </div>
+          {this.state.error && <ErrorAlert errorMsg={this.state.errorMsg} />}
+          <CenterColumn>
+            <Header
+              playerCount={this.state.playerCount}
+              roomId={this.props.roomId}
+              disabled={this.state.error}
+            />
+          </CenterColumn>
+          <div className={`grid md:grid-cols-9 relative px-5 md:px-0`}>
+            <div className="col-span-2"></div>
+            <canvas
+              className={`col-span-5 rounded-xl bg-contain shadow-md focus:outline-none ${styles.game}`}
+              // width modification above
+              ref={this.canvasRef}
+              id="game"
+              tabIndex="-1"
+              style={{
+                backgroundImage: `url(${images[this.state.background]})`,
+              }}
+            ></canvas>
+            <RightSidebar
+              setBackground={(bg) => this.setState({ background: bg })}
+              background={this.state.background}
+              backgrounds={images}
+              className="col-span-3"
+              disabled={this.state.error}
+            />
           </div>
-        </CenterColumn>
-        <div className="grid lg:grid-cols-7 relative">
-          <div className="col-span-2"></div>
-          <canvas
-            className={`col-span-3 rounded-xl bg-contain shadow-md focus:outline-none`}
-            // width modification above
-            ref={this.canvasRef}
-            id="game"
-            tabIndex="-1"
-            style={{ backgroundImage: `url(${images[this.state.background]})` }}
-          ></canvas>
-          <RightSidebar
-            setBackground={(bg) => this.setState({ background: bg })}
-            background={this.state.background}
-            backgrounds={images}
-            className="col-span-2"
-          />
+          <CenterColumn>
+            <BottomMenu
+              gameStatusText={this.state.gameStatusText}
+              onNameInput={this.onNameInput}
+              colorRef={this.colorRef}
+              throttledOnColorInput={this.throttledOnColorInput}
+              muted={this.state.muted}
+              setMuted={(v) => this.setState({ muted: v })}
+              disabled={this.state.error}
+            />
+          </CenterColumn>
         </div>
-        <CenterColumn>
-          <BottomMenu
-            gameStatusText={this.state.gameStatusText}
-            onNameInput={this.onNameInput}
-            colorRef={this.colorRef}
-            throttledOnColorInput={this.throttledOnColorInput}
-          />
-        </CenterColumn>
-      </div>
+        {/* <div className="w-screen h-full bg-blue-500 overflow-hidden">
+          <Clouds />
+        </div> */}
+      </>
     );
   };
 }
