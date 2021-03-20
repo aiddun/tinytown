@@ -7,7 +7,7 @@ var RADIUS = 15;
 var MUTE_TEXTURE = PIXI.Texture.from("/img/mute.svg");
 
 export class Player extends PixiEntity {
-  constructor(x, y, playerId, game, name = "", color = "0xff0000") {
+  constructor(x, y, playerId, game, name = "", emoji = "👀") {
     super(game, x, y);
     this.isUser = false;
 
@@ -19,8 +19,7 @@ export class Player extends PixiEntity {
 
     this.name = name;
     this.nameChanged = false;
-    this.color = color;
-    this.colorChanged = false;
+    this.emojiChanged = false;
 
     const gameState = this.game.gameComponentState;
     this.background = gameState.background;
@@ -31,6 +30,17 @@ export class Player extends PixiEntity {
 
     // this.lastTimeStamp = null;
     this.graphic = new PIXI.Graphics();
+    this.emoji = emoji;
+    this.emojiText = new PIXI.Text(this.emoji, {
+      fontFamily: "Arial",
+      fontSize: 36,
+      fill: "black",
+      align: "center",
+      lineJoin: "bevel",
+      stroke: 0xf3f4f6,
+      strokeThickness: 4,
+    });
+    this.emojiText.anchor.set(0.5, 0.5);
     this.nameText = new PIXI.Text(this.name, {
       fontFamily: "Arial",
       fontSize: 18,
@@ -40,11 +50,13 @@ export class Player extends PixiEntity {
       stroke: 0xf3f4f6,
       strokeThickness: 4,
     });
+    this.nameText.anchor.set(0.5, -0.5);
+
     this.muteSprite = new PIXI.Sprite(MUTE_TEXTURE);
     // Initially invisible
     this.muteSprite.visible = false;
 
-    this.container.addChild(this.graphic, this.nameText, this.muteSprite);
+    this.container.addChild(this.emojiText, this.nameText, this.muteSprite);
     this.msCount = 0;
 
     // Last moved time
@@ -74,13 +86,9 @@ export class Player extends PixiEntity {
     );
   }
 
-  setColor(color) {
-    this.color = color;
-
-    this.graphic.clear();
-    this.graphic.beginFill(PIXI.utils.string2hex(this.color));
-    this.graphic.drawCircle(0, 0, RADIUS); // drawCircle(x, y, radius)
-    this.graphic.endFill();
+  setEmoji(emoji) {
+    this.emoji = emoji;
+    this.emojiText.text = emoji;
   }
 
   setName(name) {
@@ -175,13 +183,13 @@ export class Player extends PixiEntity {
         break;
       }
       case 1: {
-        this.muteSprite.alpha = 0.2;
         this.muteSprite.visible = true;
+        this.muteSprite.alpha = 0.2;
         break;
       }
       default: {
-        this.muteSprite.alpha = 1;
         this.muteSprite.visible = true;
+        this.muteSprite.alpha = 1;
         break;
       }
     }
@@ -194,41 +202,38 @@ export class Player extends PixiEntity {
 }
 
 export class User extends Player {
-  constructor(x, y, playerId, game, name = "", color = 0xff0000) {
-    super(x, y, playerId, game, name, color);
+  constructor(x, y, playerId, game, name = "", emoji = "👀") {
+    super(x, y, playerId, game, name, emoji);
     this.moved = false;
     this.isUser = true;
     this.tapMove = false;
 
     // Interactivity
-    const hitArea = new PIXI.Circle(0, 0, RADIUS + 3);
-    this.graphic.hitArea = hitArea;
-    this.graphic.interactive = true;
-    this.graphic.buttonMode = true;
+    this.emojiText.interactive = true;
+    this.emojiText.buttonMode = true;
 
-    const mouseOver = this.mouseOver.bind(this);
-    this.graphic.on("mouseover", mouseOver);
-    const mouseOut = this.mouseOut.bind(this);
-    this.graphic.on("mouseout", mouseOut);
+    // const mouseOver = this.mouseOver.bind(this);
+    // this.emojiText.on("mouseover", mouseOver);
+    // const mouseOut = this.mouseOut.bind(this);
+    // this.emojiText.on("mouseout", mouseOut);
 
     const onClick = this.onClick.bind(this);
     // Pointertap for click + touch
-    this.graphic.on("pointertap", onClick);
+    this.emojiText.on("pointertap", onClick);
 
     // if dblclick on player, do nothing unusual
-    this.graphic.on("dblclick", (e) => {
+    this.emojiText.on("dblclick", (e) => {
       e.stopPropagation();
     });
 
     // Scale mute button
-    this.muteSprite.width = 2 * RADIUS * 0.7;
-    this.muteSprite.height = 2 * RADIUS * 0.7;
+    this.muteSprite.width = 2 * RADIUS;
+    this.muteSprite.height = 2 * RADIUS;
     this.muteSprite.anchor.set(0.5, 0.5);
 
     this.nameText.interactive = true;
     this.nameText.buttonMode = true;
     this.nameText.on("pointertap", onClick);
-    this.nameText.anchor.set(0.5, -0.5);
   }
 
   updateAudio() {}
@@ -248,10 +253,10 @@ export class User extends Player {
     }
 
     // Check if color changed
-    const gameStateColor = gameState.colorInput;
-    if (gameStateColor.length != 0 && this.color !== gameStateColor) {
-      this.setColor(gameStateColor);
-      this.colorChanged = true;
+    const gameEmoji = gameState.emoji;
+    if (this.emoji !== gameEmoji) {
+      this.setEmoji(gameEmoji);
+      this.emojiChanged = true;
     }
 
     // Check if background changed
@@ -283,9 +288,9 @@ export class User extends Player {
       this.emitNameChange();
       this.nameChanged = false;
     }
-    if (this.colorChanged) {
-      this.emitColorChange();
-      this.colorChanged = false;
+    if (this.emojiChanged) {
+      this.emiteEmojiChange();
+      this.emojiChanged = false;
     }
     if (this.backgroundChanged) {
       this.emitBackgroundChange();
@@ -360,8 +365,8 @@ export class User extends Player {
     );
   }
 
-  emitColorChange() {
-    this.game.udpChannel.emit("colorChange", { player: { color: this.color } });
+  emiteEmojiChange() {
+    this.game.udpChannel.emit("emojiChange", { player: { emoji: this.emoji } });
   }
 
   emitBackgroundChange() {

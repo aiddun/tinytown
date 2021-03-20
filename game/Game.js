@@ -117,11 +117,11 @@ export default class Game extends PIXI.Application {
       return;
     }
     Object.entries(players).forEach(([id, player]) => {
-      const { x, y, name, color } = player;
+      const { x, y, name, emoij } = player;
       if (id === this.udpChannel.id) {
         this.setupPlayer(player);
       } else {
-        const newPlayer = new Player(x, y, id, this, name, color);
+        const newPlayer = new Player(x, y, id, this, name, emoij);
         this.players[id] = newPlayer;
       }
     });

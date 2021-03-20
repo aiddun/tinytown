@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import ReactTooltip from "react-tooltip";
+import "emoji-mart/css/emoji-mart.css";
+import { Picker } from "emoji-mart";
 
 const HelpButton = () => {
   const [hover, sethover] = useState(false);
@@ -57,15 +59,42 @@ const MuteButton = ({ muted, setMuted, disabled }) => (
   </div>
 );
 
+function useOutsideAlerter(ref, setOpen) {
+  useEffect(() => {
+    /**
+     * Alert if clicked on outside of element
+     */
+    function handleClickOutside(event) {
+      console.log(ref.current && !ref.current.contains(event.target));
+      if (ref.current && !ref.current.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+
+    // Bind the event listener
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      // Unbind the event listener on clean up
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [ref]);
+}
+
 const BottomMenu = ({
   onNameInput,
-  colorRef,
+  // colorRef,
   throttledOnColorInput,
   gameStatusText,
   muted,
   setMuted,
   disabled,
+  emoji,
+  setEmoji,
 }) => {
+  const [emojiMenuOpen, setEmojiMenuOpen] = useState(false);
+  const rref = useRef(null);
+  useOutsideAlerter(rref, setEmojiMenuOpen);
+
   return (
     <div className="rounded-xl mx-auto bg-gray-100 h-28 my-5 w-full shadow-sm">
       <div className="flex justify-between">
@@ -91,20 +120,41 @@ const BottomMenu = ({
                   disabled={disabled}
                 />
               </div>
-              <div className="relative w-11">
-                <input
-                  style={{
-                    // height: "inherit",
-                    clipPath: "circle(38%)",
-                    cursor: "pointer",
+              <div className="relative w-11" ref={rref}>
+                <button
+                  className="absolute bottom-0 left-0 h-10 w-10 bg-blue-300 rounded-full focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  onClick={(e) => {
+                    setEmojiMenuOpen(!emojiMenuOpen);
                   }}
-                  ref={colorRef}
-                  type="color" // value={this.state.colorInput}
-                  onChange={throttledOnColorInput}
-                  title="Change color"
-                  className="h-11 w-11 absolute bottom-0 left-0"
-                  disabled={disabled}
-                />
+                >
+                  <p className="pt-1 text-xl text-center">{emoji}</p>
+                </button>
+                {emojiMenuOpen && (
+                  <div className="h-20 mx-auto absolute">
+                    <Picker
+                      // // disableSearchBar={true}
+                      // onEmojiClick={(_, em) => {
+                      //   setEmojiMenuOpen(!emojiMenuOpen);
+                      //   setEmoji(em.emoji);
+                      // }}
+                      // showPreview={false}
+                      style={{
+                        position: "absolute",
+                        bottom: "4rem",
+                        // right: "0",
+                        height: "20rem",
+                        width: "15rem",
+                        overflow: "hidden",
+                        // margin: "0px auto",
+                        // float: "right"
+                      }}
+                      onSelect={({ native }) => {
+                        setEmojiMenuOpen(false);
+                        setEmoji(native);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>

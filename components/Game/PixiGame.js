@@ -101,7 +101,6 @@ export default class PixiGame extends Component {
     this.players = {};
     this.canvasRef = createRef();
     // To avoid lag due to high rerenders on the color picker, we set the color value using the ref
-    this.colorRef = React.createRef();
 
     this.state = {
       gameConnected: false,
@@ -115,6 +114,7 @@ export default class PixiGame extends Component {
       playerCount: 0,
       background: "town",
       muted: false,
+      emoji: "👀",
     };
   }
 
@@ -157,11 +157,11 @@ export default class PixiGame extends Component {
 
   componentDidUpdate = (prevProps, prevState) => {
     this.game.gameComponentDidUpdate(this.state);
-    if (prevState.colorInput !== this.state.colorInput) {
-      // For some reason I decided that all server colors should be decimal literals for hex numbers
-      // Need to change at some point
-      this.colorRef.current.value = this.state.colorInput;
-    }
+    // if (prevState.colorInput !== this.state.colorInput) {
+    //   // For some reason I decided that all server colors should be decimal literals for hex numbers
+    //   // Need to change at some point
+    //   // this.colorRef.current.value = this.state.colorInput;
+    // }
   };
 
   render = () => {
@@ -217,11 +217,12 @@ export default class PixiGame extends Component {
             <BottomMenu
               gameStatusText={this.state.gameStatusText}
               onNameInput={this.onNameInput}
-              colorRef={this.colorRef}
               throttledOnColorInput={this.throttledOnColorInput}
               muted={this.state.muted}
               setMuted={(v) => this.setState({ muted: v })}
               disabled={this.state.error}
+              emoji={this.state.emoji}
+              setEmoji={(emoji) => this.setState({ emoji })}
             />
           </CenterColumn>
         </div>

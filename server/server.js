@@ -58,8 +58,7 @@ io.onConnection((channel) => {
     }
   });
 
-  channel.on("joinRoom", ({ room, name = "", color }) => {
-    if (!color) color = `#${getRandomInt(0xffffff).toString(16)}`;
+  channel.on("joinRoom", ({ room, name = "", emoji }) => {
     if (room) {
       if (!(room in rooms)) {
         channel.emit("setup", { error: true });
@@ -67,7 +66,12 @@ io.onConnection((channel) => {
       }
 
       channel.join(room);
-      const newPlayer = { x: 50 + getRandomInt(50), y: 50 + getRandomInt(50), name, color };
+      const newPlayer = {
+        x: 50 + getRandomInt(50),
+        y: 50 + getRandomInt(50),
+        name,
+        emoji: emoji || "👀",
+      };
 
       // TODO: Change to a data diff call in the future
       // TODO: Change to TCP
@@ -122,18 +126,16 @@ io.onConnection((channel) => {
 
   const hexMatch = (color) => color.match(/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/);
 
-  channel.on("colorChange", ({ player }) => {
-    const { color } = player;
-    if (typeof color === "string" || color instanceof String) {
-      if (hexMatch(color)) {
-        const room = rooms[channel.roomId];
-        const { players } = room;
-        const serverPlayerData = players[channel.id];
-        serverPlayerData.color = color;
+  channel.on("emojiChange", ({ player }) => {
+    const { emoji } = player;
+    if (typeof emoji === "string" || emoji instanceof String) {
+      const room = rooms[channel.roomId];
+      const { players } = room;
+      const serverPlayerData = players[channel.id];
+      serverPlayerData.emoji = emoji;
 
-        // broadcast to all in same room
-        channel.broadcast.emit("data", { [channel.id]: { color } });
-      }
+      // broadcast to all in same room
+      channel.broadcast.emit("data", { [channel.id]: { emoji } });
     }
   });
 
