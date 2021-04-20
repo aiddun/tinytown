@@ -2,9 +2,10 @@ import * as PIXI from "pixi.js";
 // import { asyncScheduler, fromEvent } from "rxjs";
 // import { throttleTime } from "rxjs/operators";
 import { Player, User } from "./Entities/Player";
-import geckos from "@geckos.io/client";
+// import geckos from "@geckos.io/client";
 import "./dblclick";
 import AgoraRTC from "agora-rtc-sdk-ng";
+import { io } from "socket.io-client";
 
 // Can be public
 // We generate token serverside
@@ -41,7 +42,7 @@ export default class Game extends PIXI.Application {
     this.players = {};
     this.keysdown = new Set();
 
-    this.udpChannel = geckos({ authorization: this.roomId }); // default port is 9208
+    this.socket = io.connect(":4040");
 
     // Setup stage interactivity for click movement
     this.stage.interactive = true;
@@ -49,49 +50,42 @@ export default class Game extends PIXI.Application {
 
     this.agoraClient = null;
 
-    this.udpChannel
-      .onConnect((error) => {
-        if (error) {
-          this.setGameComponentState({ error: true, errorMsg: "town not found" });
-          return;
-        }
+    // if (error) {
+    //   this.setGameComponentState({
+    //     error: true,
+    //     errorMsg: "town not found",
+    //   });
+    //   return;
+    // }
 
-        this.udpChannel.on("setup", (data) => this.setup(data));
-        this.udpChannel.on("data", this.ondata);
-        this.udpChannel.on("newPlayer", ({ id, player }) => {
-          const { x, y, name, color } = player;
-          this.players[id] = new Player(x, y, id, this, name, color);
-          this.setGameComponentState({
-            playerCount: Object.keys(this.players).length,
-          });
-        });
-        this.udpChannel.emit("joinRoom", { room: this.roomId });
-        this.udpChannel.on("userDisconnect", ({ id }) => {
-          if (id in this.players) {
-            this.players[id].destroy();
-            delete this.players[id];
-          }
-          this.setGameComponentState({
-            playerCount: Object.keys(this.players).length,
-          });
-        });
-
-        this.udpChannel.onDisconnect(() =>
-          setGameComponentState({
-            error: true,
-            errorMsg: "something went wrong",
-          })
-        );
-      })
-      .catch((e) => {
-        this.exitGame();
-        setGameComponentState({
-          error: true,
-          errorMsg: "something went wrong",
-        });
+    this.socket.on("setup", (data) => this.setup(data));
+    this.socket.on("data", this.ondata);
+    this.socket.on("newPlayer", ({ id, player }) => {
+      const { x, y, name, color } = player;
+      this.players[id] = new Player(x, y, id, this, name, color);
+      this.setGameComponentState({
+        playerCount: Object.keys(this.players).length,
       });
+    });
+    this.socket.on("userDisconnect", ({ id }) => {
+      console.log("here");
+      if (id in this.players) {
+        this.players[id].destroy();
+        delete this.players[id];
+      }
+      this.setGameComponentState({
+        playerCount: Object.keys(this.players).length,
+      });
+    });
 
-    // setTimeoutWorker
+    this.socket.on("disconnect", () =>
+      setGameComponentState({
+        error: true,
+        errorMsg: "something went wrong",
+      })
+    );
+
+    this.socket.emit("joinRoom", { room: this.roomId });
 
     setInterval(() => {
       // TODO: Also add dialogue timeout
@@ -113,12 +107,17 @@ export default class Game extends PIXI.Application {
   setup = (data) => {
     const { players, token, error } = data;
     if (error) {
-      alert("Error: room does not exist");
+      this.exitGame();
+      this.setGameComponentState({
+        error: true,
+        errorMsg: "town not found",
+      });
+
       return;
     }
     Object.entries(players).forEach(([id, player]) => {
       const { x, y, name, emoij } = player;
-      if (id === this.udpChannel.id) {
+      if (id === this.socket.id) {
         this.setupPlayer(player);
       } else {
         const newPlayer = new Player(x, y, id, this, name, emoij);
@@ -138,7 +137,7 @@ export default class Game extends PIXI.Application {
       appid,
       roomId,
       token,
-      this.udpChannel.id
+      this.socket.id
     );
 
     this.agoraClient.on("user-published", async (user, mediaType) => {
@@ -192,14 +191,28 @@ export default class Game extends PIXI.Application {
     const room = data;
     Object.entries(room).forEach(([id, playerData]) => {
       // Ignore player bc player is always right. Should anyways but just in case
-      if (id === this.udpChannel.id) return;
-      const { x, y, name, color, background } = playerData;
+      if (id === this.socket.id) return;
+      const { x, y, name, color, background, disconnected } = playerData;
+      console.log(playerData)
       if (id in this.players) {
         const player = this.players[id];
+        if (disconnected) {
+          player.destroy();
+          delete this.players[id];
+          this.setGameComponentState({
+            playerCount: Object.keys(this.players).length,
+          });
+          return;
+        }
         if (x && y) player.setTargetPosition(x, y);
         if (name) player.setName(name);
         if (color) player.setColor(color);
         if (background) this.setGameComponentState({ background });
+      } else {
+        this.players[id] = new Player(x, y, id, this, name, color);
+        this.setGameComponentState({
+          playerCount: Object.keys(this.players).length,
+        });
       }
     });
   };
@@ -261,7 +274,7 @@ export default class Game extends PIXI.Application {
   onTick = () => {};
 
   exitGame = () => {
-    this.udpChannel.close();
+    this.socket.disconnect();
     Object.values(this.players).forEach(
       (p) => p.agoraAudioTrack && p.agoraAudioTrack.stop()
     );

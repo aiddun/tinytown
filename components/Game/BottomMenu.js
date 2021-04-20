@@ -40,21 +40,46 @@ const HelpButton = () => {
 const MuteButton = ({ muted, setMuted, disabled }) => (
   <div className="relative w-10 left-0">
     <button
-      className="bg-white rounded-full 
+      className={`${muted ? "bg-gray-50 border-gray-400" : "bg-white "} 
+                  rounded-full 
                 border border-gray-300 text-base leading-6 
                 font-medium text-gray-700 
                 hover:text-gray-500 focus:outline-none focus:border-blue-300 
                 focus:shadow-outline-blue active:text-gray-800 active:bg-gray-50 
                 transition ease-in-out duration-150 
-                absolute bottom-0 left-0 w-10 h-10"
+                absolute bottom-0 left-0 w-10 h-10`}
       onClick={() => setMuted(!muted)}
       disabled={disabled}
     >
-      <img
-        src="/img/mute.svg"
-        className=" h-3/5 w-3/5 mx-auto"
-        style={{ filter: muted ? "invert(.7)" : "invert(.3)" }}
-      />
+      <div className="flex justify-center">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+          />
+          {muted && <line
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="undefined"
+            id="svg_1"
+            y2="19"
+            x2="19"
+            y1="5"
+            x1="5"
+            opacity="undefined"
+            stroke="#ef4444"
+            fill="none"
+          />}
+        </svg>
+      </div>
     </button>
   </div>
 );
@@ -65,7 +90,6 @@ function useOutsideAlerter(ref, setOpen) {
      * Alert if clicked on outside of element
      */
     function handleClickOutside(event) {
-      console.log(ref.current && !ref.current.contains(event.target));
       if (ref.current && !ref.current.contains(event.target)) {
         setOpen(false);
       }
@@ -94,6 +118,7 @@ const BottomMenu = ({
   const [emojiMenuOpen, setEmojiMenuOpen] = useState(false);
   const rref = useRef(null);
   useOutsideAlerter(rref, setEmojiMenuOpen);
+  const [emojiName, setEmojiName] = useState("initialState");
 
   return (
     <div className="rounded-xl mx-auto bg-gray-100 h-28 my-5 w-full shadow-sm">
@@ -122,36 +147,44 @@ const BottomMenu = ({
               </div>
               <div className="relative w-11" ref={rref}>
                 <button
-                  className="absolute bottom-0 left-0 h-10 w-10 bg-blue-300 rounded-full focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  className="absolute bottom-0 left-0 h-10 w-10 
+                  shadow-sm bg-white rounded-full
+                  flex justify-center items-center"
                   onClick={(e) => {
                     setEmojiMenuOpen(!emojiMenuOpen);
                   }}
                 >
-                  <p className="pt-1 text-xl text-center">{emoji}</p>
+                  <p className="text-xl">{emoji}</p>
                 </button>
                 {emojiMenuOpen && (
-                  <div className="h-20 mx-auto absolute">
+                  <div className="mx-auto absolute bottom-0">
                     <Picker
                       // // disableSearchBar={true}
                       // onEmojiClick={(_, em) => {
                       //   setEmojiMenuOpen(!emojiMenuOpen);
                       //   setEmoji(em.emoji);
                       // }}
-                      // showPreview={false}
-                      style={{
-                        position: "absolute",
-                        bottom: "4rem",
-                        // right: "0",
-                        height: "20rem",
-                        width: "15rem",
-                        overflow: "hidden",
-                        // margin: "0px auto",
-                        // float: "right"
-                      }}
-                      onSelect={({ native }) => {
+                      showPreview={false}
+                      style={
+                        {
+                          // position: "absolute",
+                          // bottom: "4rem",
+                          // // right: "0",
+                          // height: "20rem",
+                          // width: "15rem",
+                          // overflow: "hidden",
+                          // margin: "0px auto",
+                          // float: "right"
+                        }
+                      }
+                      onSelect={({ native, id }) => {
                         setEmojiMenuOpen(false);
                         setEmoji(native);
+                        setEmojiName(id);
                       }}
+                      title=""
+                      emoji={emojiName}
+                      // showSkinTones={tr}
                     />
                   </div>
                 )}

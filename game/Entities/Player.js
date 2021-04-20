@@ -180,16 +180,19 @@ export class Player extends PixiEntity {
     switch (level) {
       case 0: {
         this.muteSprite.visible = false;
+        this.emojiText.alpha = 1;
         break;
       }
       case 1: {
         this.muteSprite.visible = true;
         this.muteSprite.alpha = 0.2;
+        this.emojiText.alpha = 1;
         break;
       }
       default: {
         this.muteSprite.visible = true;
         this.muteSprite.alpha = 1;
+        this.emojiText.alpha = .5;
         break;
       }
     }
@@ -347,7 +350,7 @@ export class User extends Player {
   }
 
   emitNameChange() {
-    this.game.udpChannel.emit(
+    this.game.socket.emit(
       "nameChange",
       { player: { name: this.name } },
       { reliable: true }
@@ -356,7 +359,7 @@ export class User extends Player {
 
   emitMovement(reliable = true) {
     this.lastMoved = new Date();
-    this.game.udpChannel.emit(
+    this.game.socket.emit(
       "move",
       {
         player: { x: this.nextX, y: this.nextY },
@@ -366,11 +369,11 @@ export class User extends Player {
   }
 
   emiteEmojiChange() {
-    this.game.udpChannel.emit("emojiChange", { player: { emoji: this.emoji } });
+    this.game.socket.emit("emojiChange", { player: { emoji: this.emoji } });
   }
 
   emitBackgroundChange() {
-    this.game.udpChannel.emit("backgroundChange", {
+    this.game.socket.emit("backgroundChange", {
       background: this.background,
     });
   }
