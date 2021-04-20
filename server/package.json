@@ -1,13 +1,13 @@
 {
   "dependencies": {
-    "@geckos.io/server": "^1.7.1",
     "crc-32": "^1.2.0",
     "cuint": "^0.2.2",
     "dotenv": "^8.2.0",
     "eiows": "^3.4.2",
     "express": "^4.17.1",
     "express-rate-limit": "^5.2.3",
-    "socket.io": "^3.1.2"
+    "socket.io": "^3.1.2",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v18.14.0"
   },
   "scripts": {
     "start": "node server.js"

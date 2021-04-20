@@ -94,13 +94,13 @@ const Header = ({ playerCount, roomId, disabled }) => {
 export default class PixiGame extends Component {
   constructor(props) {
     super(props);
-
     const { roomId } = props;
     this.roomId = roomId;
     this.player = null;
     this.players = {};
     this.canvasRef = createRef();
     // To avoid lag due to high rerenders on the color picker, we set the color value using the ref
+    const emojiOptions = ["&#129489;&zwj;&#128295;", "&#129489;&zwj;&#128300;", "&#129489;&zwj;&#9992;&#65039;", "&#129500;", "&#129489;&zwj;&#128187;", "&#129489;&zwj;&#9992;&#65039;", "&#129489;&zwj;&#128640;", "&#128692;"]
 
     this.state = {
       gameConnected: false,
@@ -114,7 +114,7 @@ export default class PixiGame extends Component {
       playerCount: 0,
       background: "town",
       muted: false,
-      emoji: "👀",
+      emoji: emojiOptions[Math.floor(Math.random() * emojiOptions.length)],
     };
   }
 

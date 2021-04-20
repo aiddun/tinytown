@@ -42,7 +42,7 @@ export default class Game extends PIXI.Application {
     this.players = {};
     this.keysdown = new Set();
 
-    this.socket = io.connect(":4040");
+    this.socket = io();
 
     // Setup stage interactivity for click movement
     this.stage.interactive = true;
@@ -68,7 +68,6 @@ export default class Game extends PIXI.Application {
       });
     });
     this.socket.on("userDisconnect", ({ id }) => {
-      console.log("here");
       if (id in this.players) {
         this.players[id].destroy();
         delete this.players[id];
@@ -84,7 +83,6 @@ export default class Game extends PIXI.Application {
         errorMsg: "something went wrong",
       })
     );
-
     this.socket.emit("joinRoom", { room: this.roomId });
 
     setInterval(() => {
@@ -193,7 +191,6 @@ export default class Game extends PIXI.Application {
       // Ignore player bc player is always right. Should anyways but just in case
       if (id === this.socket.id) return;
       const { x, y, name, color, background, disconnected } = playerData;
-      console.log(playerData)
       if (id in this.players) {
         const player = this.players[id];
         if (disconnected) {

@@ -1,14 +1,14 @@
-const geckos = require("@geckos.io/server").default;
+// const geckos = require("@geckos.io/server").default;
 const http = require("http");
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer();
 
 require("dotenv").config();
 
 const io = require("socket.io")(server, {
-  // wsEngine: require("eiows").Server,
+  wsEngine: "eiows",
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
@@ -46,8 +46,6 @@ io.on("connection", (socket) => {
     if (room) {
       const { players } = room;
       delete players[socket.id];
-
-      console.log(`${socket.id} got disconnected`);
 
       room.buffer[socket.id] = {
         disconnected: true,
