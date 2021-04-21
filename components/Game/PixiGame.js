@@ -8,7 +8,7 @@ import BottomMenu from "./BottomMenu";
 import ErrorAlert from "./ErrorAlert";
 import styles from "./game.module.scss";
 import RightSidebar from "./RightSidebar";
-
+import {emojiOptions} from "./emojiOptions";
 // Can be public
 // We generate token serverside
 var AGORA_APPID = "c2fc730c17d0471188e63e675f7e268d";
@@ -61,12 +61,14 @@ const Header = ({ playerCount, roomId, disabled }) => {
   return (
     <div className="rounded-xl mx-auto bg-gray-100 h-16 my-5 w-full shadow-sm ">
       <div className="h-full flex justify-between items-center px-5">
-        <Link href="/">
-          <a>
-            <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
-          </a>
-        </Link>
-        <div className={`inline-flex ${disabled && "hidden"}`}>
+        <div>
+	  <Link href="/">
+            <a>
+              <h1 className="text-3xl font-bold">🏘️ tiny town</h1>
+            </a>
+          </Link>
+	</div>
+	<div className={`inline-flex ${disabled && "hidden"}`}>
           <button
             onClick={(e) => {
               const copyText = window.location.href;
@@ -100,9 +102,9 @@ export default class PixiGame extends Component {
     this.players = {};
     this.canvasRef = createRef();
     // To avoid lag due to high rerenders on the color picker, we set the color value using the ref
-    const emojiOptions = ["&#129489;&zwj;&#128295;", "&#129489;&zwj;&#128300;", "&#129489;&zwj;&#9992;&#65039;", "&#129500;", "&#129489;&zwj;&#128187;", "&#129489;&zwj;&#9992;&#65039;", "&#129489;&zwj;&#128640;", "&#128692;"]
 
-    this.state = {
+
+	  this.state = {
       gameConnected: false,
       audioConnected: false,
       disconnected: false,
@@ -225,11 +227,15 @@ export default class PixiGame extends Component {
               setEmoji={(emoji) => this.setState({ emoji })}
             />
           </CenterColumn>
-        </div>
-        {/* <div className="w-screen h-full bg-blue-500 overflow-hidden">
-          <Clouds />
+      
+	           {/*  <div className="">
+          <p className="text-center text-md pb-6 text-gray-800">
+            Walk around and chat with positional audio, like in real life
+          </p>
         </div> */}
-      </>
+
+	    </div>
+	    </>
     );
   };
 }

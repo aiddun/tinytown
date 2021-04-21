@@ -192,8 +192,14 @@ const BottomMenu = ({
             </div>
           </div>
           {/* <br /> */}
-          <p className="text-xs py-2">{gameStatusText}</p>
-        </div>
+                  <p
+	              className={`text-xs py-2 ${
+			                    gameStatusText === "audio connected" ? "font-semibold" : ""
+			                  }`}
+					            >
+						                {gameStatusText}
+								          </p>
+	  </div>
         {/* Float to bottom of bar */}
         {/* Help button */}
         <div className="pt-2">

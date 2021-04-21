@@ -105,6 +105,18 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("mute", ({ player }) => {
+    const { mute } = player;
+    if (typeof mute === "boolean") {
+      const room = rooms[Array.from(socket.rooms)[1]];
+      const { players } = room;
+      const serverPlayerData = players[socket.id];
+      serverPlayerData.mute = mute;
+
+      room.buffer[socket.id] = { ...room.buffer[socket.id], mute };
+    }
+  });
+
   const hexMatch = (color) => color.match(/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/);
 
   socket.on("emojiChange", ({ player }) => {
@@ -177,7 +189,9 @@ app.listen(8888, () => {
 // todo:
 setInterval(() => {
   Object.entries(rooms).forEach(([id, { buffer }]) => {
-    io.to(id).emit("data", buffer);
-    rooms[id].buffer = {};
+    if (Object.keys(buffer).length !== 0) {
+      io.to(id).emit("data", buffer);
+      rooms[id].buffer = {};
+    }
   });
 }, 200);

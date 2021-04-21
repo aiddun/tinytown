@@ -146,9 +146,10 @@ const JoinTown = () => {
         >
           <div className="grid sm:grid-rows-4 h-full max-w-full py-10">
             <div>
-              <h1 className="text-center text-4xl text-white pt-5 font-bold text-shadow">
+              <h1 className="text-center text-4xl text-white pt-4 pb-2 font-bold text-shadow">
                 tiny town 🏘️
               </h1>
+	      <h3 className="text-center text-lg text-white pt-0 font-medium">Walk around and chat with positional audio, like in real life</h3>
             </div>
             <div
               className="grid grid-cols-1 sm:grid-cols-3 

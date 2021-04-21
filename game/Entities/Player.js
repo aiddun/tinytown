@@ -7,7 +7,7 @@ var RADIUS = 15;
 var MUTE_TEXTURE = PIXI.Texture.from("/img/mute.svg");
 
 export class Player extends PixiEntity {
-  constructor(x, y, playerId, game, name = "", emoji = "👀") {
+  constructor(x, y, playerId, game, name = "", emoji) {
     super(game, x, y);
     this.isUser = false;
 
@@ -55,6 +55,11 @@ export class Player extends PixiEntity {
     this.muteSprite = new PIXI.Sprite(MUTE_TEXTURE);
     // Initially invisible
     this.muteSprite.visible = false;
+
+    // Scale mute button
+    this.muteSprite.width = 2 * RADIUS;
+    this.muteSprite.height = 2 * RADIUS;
+    this.muteSprite.anchor.set(0.5, 0.5);
 
     this.container.addChild(this.emojiText, this.nameText, this.muteSprite);
     this.msCount = 0;
@@ -111,8 +116,8 @@ export class Player extends PixiEntity {
       dist = dist > 200 ? 200 : dist;
       const vol = 200 - dist;
       const { isPlaying } = this.agoraAudioTrack;
-      if (dist > 300 && isPlaying) this.agoraAudioTrack.stop();
-      else if (isPlaying) {
+      if (dist === 200 && isPlaying) this.agoraAudioTrack.stop();
+      else if (!isPlaying && dist < 200) {
         this.agoraAudioTrack.setVolume(vol);
         this.agoraAudioTrack.play();
       } else this.agoraAudioTrack.setVolume(vol);
@@ -198,6 +203,16 @@ export class Player extends PixiEntity {
     }
   }
 
+  mute() {
+    this.muted = true;
+    this.setMuteSprite(2);
+  }
+
+  unmute() {
+    this.muted = false;
+    this.setMuteSprite(0);
+  }
+
   destructor() {
     console.log(`destructing ${this.playerId}`);
     super.destructor();
@@ -205,7 +220,7 @@ export class Player extends PixiEntity {
 }
 
 export class User extends Player {
-  constructor(x, y, playerId, game, name = "", emoji = "👀") {
+  constructor(x, y, playerId, game, name = "", emoji = "") {
     super(x, y, playerId, game, name, emoji);
     this.moved = false;
     this.isUser = true;
@@ -345,7 +360,7 @@ export class User extends Player {
       }, this);
 
     if (this.agoraAudioTrack) {
-      console.log(this.agoraAudioTrack.getVolumeLevel());
+      // console.log(this.agoraAudioTrack.getVolumeLevel());
     }
   }
 
@@ -382,14 +397,16 @@ export class User extends Player {
     // Invert muted
     this.muted = true;
     this.setMuteSprite(2);
-    this.agoraAudioTrack && this.agoraAudioTrack.stop();
+    this.agoraAudioTrack.setEnabled(false);
+    this.game.socket.emit("mute", { player: { mute: true } });
   }
 
   unmute() {
     // Invert muted
     this.muted = false;
     this.setMuteSprite(0);
-    this.agoraAudioTrack && this.agoraAudioTrack.play();
+    this.agoraAudioTrack.setEnabled(true);
+    this.game.socket.emit("mute", { player: { mute: false } });
   }
 
   mouseOver(e) {

@@ -6,7 +6,7 @@ import "react-awesome-button/src/styles/styles.scss";
 export default function MyApp({ Component, pageProps }) {
   return (
     // <UserContextProvider>
-      <Component {...pageProps} />
+	  <Component {...pageProps} />
     // </UserContextProvider>
   )
 }
