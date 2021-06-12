@@ -26,3 +26,13 @@
     margin-left: 100%;
   }
 }
+
+.joinRoomButton {
+  --button-default-height: 7em !important;
+  width:100%;
+}
+@media (min-width: 640px) {
+  .joinRoomButton {
+    --button-default-height: 24rem !important;
+  }
+}

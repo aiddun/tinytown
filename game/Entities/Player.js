@@ -33,7 +33,7 @@ export class Player extends PixiEntity {
     this.emoji = emoji;
     this.emojiText = new PIXI.Text(this.emoji, {
       fontFamily: "Arial",
-      fontSize: 36,
+      fontSize: document.body.clientWidth <= 768 ? 80 : 36,
       fill: "black",
       align: "center",
       lineJoin: "bevel",
@@ -43,14 +43,14 @@ export class Player extends PixiEntity {
     this.emojiText.anchor.set(0.5, 0.5);
     this.nameText = new PIXI.Text(this.name, {
       fontFamily: "Arial",
-      fontSize: 18,
+      fontSize: document.body.clientWidth <= 768 ? 36: 18,
       fill: "black",
       align: "center",
       lineJoin: "bevel",
       stroke: 0xf3f4f6,
       strokeThickness: 4,
     });
-    this.nameText.anchor.set(0.5, -0.5);
+    this.nameText.anchor.set(0.5, document.body.clientWidth <= 658 ? -0.75 : -0.5);
 
     this.muteSprite = new PIXI.Sprite(MUTE_TEXTURE);
     // Initially invisible
