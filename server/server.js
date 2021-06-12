@@ -1,10 +1,19 @@
-const geckos = require("@geckos.io/server").default;
+// const geckos = require("@geckos.io/server").default;
 const http = require("http");
 const express = require("express");
 const rateLimit = require("express-rate-limit");
 const app = express();
-const server = http.createServer(app);
+const server = http.createServer();
+
 require("dotenv").config();
+
+const io = require("socket.io")(server, {
+  wsEngine: "eiows",
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 const { RtcTokenBuilder, AgoraRole } = require("./agoraTokenGen.js");
 
@@ -30,42 +39,30 @@ function getRandomInt(max) {
 
 var rooms = {};
 
-const io = geckos({
-  autoManageBuffering: false,
-  authorization: async (auth, request) => {
-    return auth in rooms;
-  },
-});
-
-io.listen(); // default port is 9208
-
-io.onConnection((channel) => {
-  channel.onDisconnect(() => {
-    const room = rooms[channel.roomId];
-    // TODO: if statement is HACK, remove
+io.on("connection", (socket) => {
+  socket.on("disconnecting", () => {
+    const roomId = Array.from(socket.rooms)[1];
+    const room = rooms[roomId];
     if (room) {
       const { players } = room;
-      delete players[channel.id];
+      delete players[socket.id];
 
-      // TODO: Add room gc
-
-      console.log(`${channel.id} got disconnected`);
-      channel.room.emit(
-        "userDisconnect",
-        { id: channel.id },
-        { reliable: true }
-      );
+      room.buffer[socket.id] = {
+        disconnected: true,
+        ...room.buffer[socket.id],
+      };
     }
   });
 
-  channel.on("joinRoom", ({ room, name = "", emoji }) => {
-    if (room) {
-      if (!(room in rooms)) {
-        channel.emit("setup", { error: true });
+  socket.on("joinRoom", ({ room: roomId, name = "", emoji }) => {
+    if (roomId) {
+      if (!(roomId in rooms)) {
+        socket.emit("setup", { error: true });
         return;
       }
 
-      channel.join(room);
+      socket.join(roomId);
+
       const newPlayer = {
         x: 50 + getRandomInt(50),
         y: 50 + getRandomInt(50),
@@ -73,83 +70,71 @@ io.onConnection((channel) => {
         emoji: emoji || "👀",
       };
 
-      // TODO: Change to a data diff call in the future
-      // TODO: Change to TCP
+      const room = rooms[roomId];
+      room.players[socket.id] = newPlayer;
+      socket.emit("setup", {
+        players: room.players,
+        token: genToken(socket.id, roomId),
+      });
 
-      // Notify existing players (not current)
-      // Send all players to player, including itself
-      rooms[room].players[channel.id] = newPlayer;
-      channel.emit(
-        "setup",
-        { players: rooms[room].players, token: genToken(channel.id, room) },
-        { reliable: true }
-      );
-
-      // Broadcast to other users in room
-      channel.broadcast.emit(
-        "newPlayer",
-        { id: channel.id, player: newPlayer },
-        { reliable: true }
-      );
+      room.buffer[socket.id] = { ...newPlayer, ...room.buffer[socket.id] };
     }
   });
 
-  channel.on("data", (data) => {
-    console.log(`got ${data} from "chat message"`);
-    io.room(channel.roomId).emit("chat message", data);
-  });
-
-  channel.on("move", ({ player }) => {
+  socket.on("move", ({ player }) => {
     const { x, y } = player;
-    const room = rooms[channel.roomId];
+    const room = rooms[Array.from(socket.rooms)[1]];
     const { players } = room;
-    const serverPlayerData = players[channel.id];
+    const serverPlayerData = players[socket.id];
     serverPlayerData.x = x % GAME_HEIGHT;
     serverPlayerData.y = y % GAME_WIDTH;
 
     // broadcast to all in same room
-    channel.broadcast.emit("data", { [channel.id]: { x: x, y: y } });
+    room.buffer[socket.id] = { ...room.buffer[socket.id], x, y };
   });
 
-  channel.on("nameChange", ({ player }) => {
+  socket.on("nameChange", ({ player }) => {
     const { name } = player;
     if (typeof name === "string" || name instanceof String) {
-      const room = rooms[channel.roomId];
+      const room = rooms[Array.from(socket.rooms)[1]];
       const { players } = room;
-      const serverPlayerData = players[channel.id];
+      const serverPlayerData = players[socket.id];
       serverPlayerData.name = name;
 
-      // broadcast to all in same room
-      channel.broadcast.emit("data", { [channel.id]: { name: name } });
+      room.buffer[socket.id] = { ...room.buffer[socket.id], name };
+    }
+  });
+
+  socket.on("mute", ({ player }) => {
+    const { mute } = player;
+    if (typeof mute === "boolean") {
+      const room = rooms[Array.from(socket.rooms)[1]];
+      const { players } = room;
+      const serverPlayerData = players[socket.id];
+      serverPlayerData.mute = mute;
+
+      room.buffer[socket.id] = { ...room.buffer[socket.id], mute };
     }
   });
 
   const hexMatch = (color) => color.match(/^#([a-fA-F0-9]{6}|[a-fA-F0-9]{3})$/);
 
-  channel.on("emojiChange", ({ player }) => {
+  socket.on("emojiChange", ({ player }) => {
     const { emoji } = player;
     if (typeof emoji === "string" || emoji instanceof String) {
-      const room = rooms[channel.roomId];
+      const room = rooms[Array.from(socket.rooms)[1]];
       const { players } = room;
-      const serverPlayerData = players[channel.id];
+      const serverPlayerData = players[socket.id];
       serverPlayerData.emoji = emoji;
-
-      // broadcast to all in same room
-      channel.broadcast.emit("data", { [channel.id]: { emoji } });
+      room.buffer[socket.id] = { ...room.buffer[socket.id], emoji };
     }
   });
 
-  channel.on("backgroundChange", ({ background }) => {
+  socket.on("backgroundChange", ({ background }) => {
     if (typeof background === "string" || background instanceof String) {
-      const room = rooms[channel.roomId];
+      const room = rooms[Array.from(socket.rooms)[1]];
       room.background = background;
-
-      // broadcast to all in same room
-      channel.broadcast.emit(
-        "data",
-        { [channel.id]: { background } },
-        { reliable: true }
-      );
+      room.buffer[socket.id] = { ...room.buffer[socket.id], background };
     }
   });
 });
@@ -164,9 +149,13 @@ const genRandomRoomID = () =>
 const genRoom = () => {
   let roomId;
   // no duplicates
-  while ((roomId = genRandomRoomID()) in rooms);
+  let counter = 0;
+  while ((roomId = genRandomRoomID()) in rooms && counter++ < 10);
+  if (counter >= 10) {
+    while ((roomId = genRandomRoomID() + genRandomRoomID()) in rooms);
+  }
 
-  rooms[roomId] = { players: {}, created: new Date() };
+  rooms[roomId] = { players: {}, created: new Date(), buffer: {} };
   return roomId;
 };
 
@@ -189,4 +178,20 @@ app.get("/validtown", (req, res) => {
   res.send({ valid: roomId in rooms });
 });
 
-server.listen(8888);
+server.listen(4040, () => {
+  console.log("socket listening on 4040");
+});
+
+app.listen(8888, () => {
+  console.log("express listening on *:8888");
+});
+
+// todo:
+setInterval(() => {
+  Object.entries(rooms).forEach(([id, { buffer }]) => {
+    if (Object.keys(buffer).length !== 0) {
+      io.to(id).emit("data", buffer);
+      rooms[id].buffer = {};
+    }
+  });
+}, 200);

@@ -1,5 +1,4 @@
 high:
-network errors
 
 med:
 timestamping for OOO packets
@@ -7,6 +6,7 @@ disconnect/reconnecting prompt
 sync websocket disconnect with udp (websocket instant)
 idle -> kick
 captcha
+quit 
 
 // not release
 low:

@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/router";
 import { AwesomeButton } from "react-awesome-button";
 import Cloud from "../Cloud";
@@ -9,14 +9,9 @@ const CreateRoomButton = ({ setloggedin, setTravelSuccess }) => {
   return (
     <AwesomeButton
       type="primary"
-      className="w-full h-full rounded-3xl mx-auto 
-            text-center 
-            transition duration-300 ease-in-out 
-            focus:outline-none "
+      className="joinRoomButton" 
       style={{
-        // "margin-left": "0.25rem !important",
         "--button-default-width": "100%",
-        "--button-default-height": "100%",
         "--button-default-border-radius": "1.5rem",
         "--button-raise-level": "4px",
         "--button-primary-color": "rgba(249, 250, 251)",
@@ -48,15 +43,16 @@ const checkTownValid = async (roomId) => {
 const RoomCodeInput = ({ correcttowncode, setTravelSuccess, seterror }) => {
   const router = useRouter();
   const townCodeInputRef = useRef(null);
+  const [placeHolder, setplaceHolder] = useState("");
 
-  const placeHolder = useMemo(() => {
+  useEffect(() => {
     let letter;
     while (
       ["Q", "K", "X"].includes(
         (letter = String.fromCharCode(65 + Math.floor(Math.random() * 26)))
       )
     );
-    return letter.repeat(4);
+    setplaceHolder(letter.repeat(4));
   }, []);
 
 
@@ -113,7 +109,7 @@ const RoomCodeInput = ({ correcttowncode, setTravelSuccess, seterror }) => {
 
 // Extra component to avoid rerender on button press
 const Clouds = () => (
-  <>
+  <div className="motion-safe:invisible">
     <Cloud />
     <Cloud />
     <Cloud />
@@ -124,7 +120,7 @@ const Clouds = () => (
     <Cloud />
     <Cloud />
     <Cloud />
-  </>
+  </div>
 );
 
 const JoinTown = () => {
@@ -136,23 +132,24 @@ const JoinTown = () => {
     <div className="w-screen">
       <div className="absolute w-screen z-20">
         <div
-          className="rounded-3xl mx-auto mt-20"
+          className="rounded-3xl mx-auto mt-3 px-5 sm:px-auto md:mt-20"
           style={{
-            width: "80vw",
-            maxWidth: "50rem",
+            // width: "80vw",
+            // maxWidth: "50rem",
             height: "80vh",
             maxHeight: "35rem",
           }}
         >
-          <div className="grid sm:grid-rows-4 h-full max-w-full py-10">
+          <div className="flex flex-col h-full pt-5 sm:pt-10 max-w-3xl mx-auto">
             <div>
-              <h1 className="text-center text-4xl text-white pt-5 font-bold text-shadow">
+              <h1 className="text-center text-4xl text-white pt-4 pb-2 font-bold text-shadow">
                 tiny town 🏘️
               </h1>
+	      <h3 className="text-center text-lg text-white pt-0 font-medium">Walk around and chat with positional audio, like in real life</h3>
             </div>
             <div
               className="grid grid-cols-1 sm:grid-cols-3 
-                         h-full row-span-3 px-4 
+                         h-64 pt-12 sm:pt-auto md:h-96 row-span-3 px-4 
                          sm:px-24 gap-x-0 gap-y-4 sm:gap-x-10 sm:gap-y-10"
             >
               {/* Create room button */}
@@ -161,7 +158,7 @@ const JoinTown = () => {
                 setTravelSuccess={setTravelSuccess}
               />
               {/* Room code input */}
-              <div className="w-full h-full bg-gray-50	shadow-md rounded-3xl mx-auto text-center col-span-2 flex">
+              <div className="w-full h-56 sm:h-full bg-gray-50	shadow-md rounded-3xl mx-auto text-center col-span-2 flex">
                 <div className="m-auto">
                   <p className="text-xl font-medium">enter town code</p>
                   <RoomCodeInput

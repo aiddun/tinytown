@@ -9,7 +9,7 @@ const PixiGameNoSSR = dynamic(() => import("../components/Game/PixiGame"), {
 
 const Game = () => {
   const router = useRouter();
-  const { roomId } = router.query;
+  const { roomid: roomId } = router.query;
 
   return (
     <>
